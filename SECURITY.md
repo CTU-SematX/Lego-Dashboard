@@ -9,7 +9,7 @@ If you've found a security vulnerability, we appreciate you taking the time to r
 To report a security vulnerability, please provide the following information:
 
 1. **PROJECT**
-   - Include the URL of the project repository - Example: <https://github.com/open-source-project-template>
+   - Include the URL of the project repository - Example: <https://github.com/CTU-SematX/Lego-Dashboard>
 
 2. **PUBLIC**
    - Indicate whether this vulnerability has already been publicly discussed or disclosed.
@@ -19,7 +19,7 @@ To report a security vulnerability, please provide the following information:
    - Provide a detailed description of the security vulnerability.
    - Include as much information as possible to help us understand and address the issue.
 
-Send this information, along with any additional relevant details, to [INSERT_CONTACT_METHOD].
+Send this information, along with any additional relevant details, via [GitHub Security Advisories](https://github.com/CTU-SematX/Lego-Dashboard/security/advisories/new).
 
 ## Confidentiality
 

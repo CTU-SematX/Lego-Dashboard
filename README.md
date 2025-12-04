@@ -1,21 +1,15 @@
  
 
-# Project Title
+# Lego-Dashboard
 
-Project logo and badges goes here.
-
-Examples: All pointing to this project
-[![Version](https://img.shields.io/github/v/tag/diggsweden/open-source-project-template?style=for-the-badge&color=green&label=Version)](https://github.com/diggswedenn/open-source-project-template/tags])
-[![REUSE](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.reuse.software%2Fstatus%2Fgithub.com%2Fdiggsweden%2Fopen-source-project-template&query=status&style=for-the-badge&label=REUSE)](https://api.reuse.software/info/github.com/diggsweden/open-source-project-template)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/diggsweden/open-source-project-template/badge?style=for-the-badge)](https://scorecard.dev/viewer/?uri=github.com/diggsweden/open-source-project-template)
+[![Version](https://img.shields.io/github/v/tag/CTU-SematX/Lego-Dashboard?style=for-the-badge&color=green&label=Version)](https://github.com/CTU-SematX/Lego-Dashboard/tags)
+[![REUSE](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.reuse.software%2Fstatus%2Fgithub.com%2FCTU-SematX%2FLego-Dashboard&query=status&style=for-the-badge&label=REUSE)](https://api.reuse.software/info/github.com/CTU-SematX/Lego-Dashboard)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/CTU-SematX/Lego-Dashboard/badge?style=for-the-badge)](https://scorecard.dev/viewer/?uri=github.com/CTU-SematX/Lego-Dashboard)
 ![Standard for Public Code Commitment](https://img.shields.io/badge/Standard%20for%20Public%20Code%20Commitment-green?style=for-the-badge)
 
-Highly optional. Embed an image of the project logo and include links to relevant badges in the README.
+**Description**: An alternative for WireCloud (FIWARE). A PayloadCMS template adapted for NGSI-LD using in smart city applications.
 
-**Description**:  Put a meaningful, short, plain-language description of what the project is trying to accomplish and why it matters.
-Describe the problem(s) this project solves.
-
-**Screenshot**: If the software has visual components, place a screenshot after the description; e.g.,
+Lego-Dashboard provides a modern, flexible dashboard solution for smart city applications that need to work with NGSI-LD data models. Built on PayloadCMS and Next.js, it offers a customizable platform for visualizing and managing context information from NGSI-LD compatible data sources.
 
 ## Table of Contents
 
@@ -32,74 +26,121 @@ Describe the problem(s) this project solves.
 
 ## Installation and Requirements
 
-Detailed instructions on how to install, configure, and get the project running.
-This should be frequently tested to ensure reliability. Alternatively, link to
-a separate _INSTALLATION.md_ document.
+### Prerequisites
 
-Simple example:
+- Node.js 22+
+- pnpm package manager
+- MongoDB database
+- Docker (optional, for containerized deployment)
 
-`$ pip install PROJECT`
+### Installation
 
-`$ npm install PROJECT --save`
+```bash
+# Clone the repository
+git clone https://github.com/CTU-SematX/Lego-Dashboard.git
+cd Lego-Dashboard
 
-`$ any other command`
+# Install dependencies
+pnpm install
+
+# Set up environment variables
+cp test.env .env
+# Edit .env with your configuration
+
+# Run development server
+pnpm dev
+```
+
+### Docker Deployment
+
+```bash
+docker-compose up -d
+```
 
 ## Quick start instructions
 
-Describe the fastest possible way to get the project running.
+1. Clone and install dependencies:
+   ```bash
+   pnpm install
+   ```
+
+2. Configure environment variables in `.env`
+
+3. Start the development server:
+   ```bash
+   pnpm dev
+   ```
+
+4. Open [http://localhost:3000](http://localhost:3000) in your browser
 
 ## Usage
 
-Show users how to use the software.
-Be specific.
-Use appropriate formatting when showing code snippets.
+### NGSI-LD Integration
+
+The dashboard integrates with NGSI-LD context brokers to:
+- Connect to NGSI data sources
+- Manage NGSI entities and data models
+- Visualize smart city data
+
+### Content Management
+
+Built on PayloadCMS, the dashboard provides:
+- Admin panel at `/admin`
+- Customizable pages and posts
+- Media management
+- Form builder
 
 ## Known issues
 
-Document any known significant shortcomings with the software.
+See the [Issues](https://github.com/CTU-SematX/Lego-Dashboard/issues) page for current known issues and feature requests.
 
 ## Support
 
-Instruct users how to get help with this software; this might include links to an issue tracker, wiki, mailing list, etc.
-
-Example:
-
-_If you have questions, concerns, bug reports, etc, please file an issue in this repository's Issue Tracker._
+If you have questions, concerns, bug reports, etc., please file an issue in this repository's [Issue Tracker](https://github.com/CTU-SematX/Lego-Dashboard/issues).
 
 ## Contributing
 
-This section should detail why people should get involved and describe key areas you are
-currently focusing on; e.g., trying to get feedback on features, fixing certain bugs, building
-important pieces, etc.
+We welcome contributions to Lego-Dashboard! Key areas we're focusing on:
+- NGSI-LD data model support
+- Dashboard widgets and visualizations
+- Smart city use cases
+- Documentation improvements
 
-General instructions on _how_ to contribute should be stated with a link to [CONTRIBUTING](CONTRIBUTING.md).
+General instructions on _how_ to contribute can be found in [CONTRIBUTING](CONTRIBUTING.md).
 
 ## Development
 
-General instructions on how to Develop for the project should be stated with a link to _DEVELOPMENT.md_.
+```bash
+# Run development server
+pnpm dev
+
+# Run linting
+pnpm lint
+
+# Run tests
+pnpm test
+
+# Build for production
+pnpm build
+```
+
+For more details, see the development section in [CONTRIBUTING](CONTRIBUTING.md).
 
 ---
 
 ## License
 
-Example:
-This project is licensed under the Creative Commons Zero v1.0 Universal License - see the [LICENSE](LICENSE) file for details
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
 
 ---
 
 ## Maintainers
 
-Name and git-account for primary maintainer/s:
-
-Example:
-_The_maintainers_
+CTU-SematX Team
 
 ## Credits and References
 
-Credits, references or other relevant information.
-
-Example:
-
-Special Thanks to
-
-- [IEEE Open Source Maintainers Manual](https://opensource.ieee.org/community/manual/)
+- [PayloadCMS](https://payloadcms.com/) - The headless CMS powering this dashboard
+- [Next.js](https://nextjs.org/) - React framework for production
+- [FIWARE](https://www.fiware.org/) - Smart city platform and NGSI-LD specifications
+- [WireCloud](https://wirecloud.readthedocs.io/) - The original dashboard solution this project aims to provide an alternative for

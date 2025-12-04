@@ -4,8 +4,10 @@
 
 [![Version](https://img.shields.io/github/v/tag/CTU-SematX/Lego-Dashboard?style=for-the-badge&color=green&label=Version)](https://github.com/CTU-SematX/Lego-Dashboard/tags)
 [![REUSE](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.reuse.software%2Fstatus%2Fgithub.com%2FCTU-SematX%2FLego-Dashboard&query=status&style=for-the-badge&label=REUSE)](https://api.reuse.software/info/github.com/CTU-SematX/Lego-Dashboard)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/CTU-SematX/Lego-Dashboard/badge?style=for-the-badge)](https://scorecard.dev/viewer/?uri=github.com/CTU-SematX/Lego-Dashboard)
+[![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/CTU-SematX/Lego-Dashboard?style=for-the-badge&label=OpenSSF%20Scorecard)](https://scorecard.dev/viewer/?uri=github.com/CTU-SematX/Lego-Dashboard)
 ![Standard for Public Code Commitment](https://img.shields.io/badge/Standard%20for%20Public%20Code%20Commitment-green?style=for-the-badge)
+[![Pull Request Workflow](https://img.shields.io/github/actions/workflow/status/CTU-SematX/Lego-Dashboard/pull-request-workflow.yml?style=for-the-badge&label=PR%20Workflow)](https://github.com/CTU-SematX/Lego-Dashboard/actions/workflows/pull-request-workflow.yml)
+[![Release Workflow](https://img.shields.io/github/actions/workflow/status/CTU-SematX/Lego-Dashboard/release-workflow.yml?style=for-the-badge&label=Release)](https://github.com/CTU-SematX/Lego-Dashboard/actions/workflows/release-workflow.yml)
 
 **Description**: An alternative for WireCloud (FIWARE). A PayloadCMS template adapted for NGSI-LD using in smart city applications.
 

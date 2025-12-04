@@ -1,50 +1,91 @@
-### Build output
-/.next
-/build
-/dist
+# ================================
+# Build Output
+# ================================
+/.next/
+/build/
+/dist/
+/out/
+*.tsbuildinfo
 
-### Dependency directories
+# ================================
+# Dependencies
+# ================================
 node_modules/
-**/node_modules/
+.pnpm-store/
+.yarn/
+.npm/
 
-### Environment files
+# ================================
+# Environment Variables
+# ================================
 .env
 .env.*
-.env.local
+!.env.example
 
-### IDE/editor directories
-.vscode/
+# ================================
+# IDE / Editor
+# ================================
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 .idea/
+*.swp
+*.swo
+*~
 
-### OS files
+# ================================
+# OS Files
+# ================================
 .DS_Store
+Thumbs.db
+*.orig
 
-### Payload / Public
-# PayloadCMS default media upload directory
+# ================================
+# Payload CMS
+# ================================
+# Media uploads (user-generated content)
 public/media/
+
+# Generated files
 public/robots.txt
 public/sitemap*.xml
 
-### Testing / Reports
+# ================================
+# Testing
+# ================================
 /test-results/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+/coverage/
+.nyc_output/
 
-### Logs & coverage
+# ================================
+# Logs
+# ================================
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-coverage/
-.nyc_output/
+lerna-debug.log*
 
-### Caches & tooling
+# ================================
+# Cache & Tooling
+# ================================
 .cache/
 .eslintcache
 .turbo/
-.pnpm-store/
+.temp/
+.tmp/
 
-### Container & deployment
-.vercel
+# ================================
+# Deployment
+# ================================
+.vercel/
+
+# ================================
+# Misc
+# ================================
+*.local
 

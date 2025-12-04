@@ -1,11 +1,11 @@
 # Lego-Dashboard
 
-<a href="https://ctu-sematx.github.io/Lego-Doc/"><img src="https://img.shields.io/badge/docs-Lego--Doc-blue?logo=materialformkdocs&logoColor=fff"></a>
+<a href="https://ctu-sematx.github.io/Lego-Doc/"><img src="https://img.shields.io/badge/docs-Lego--Doc-blue?logo=materialformkdocs&amp;logoColor=fff"></a>
 <a href="https://scorecard.dev/viewer/?uri=github.com/CTU-SematX/Lego-Dashboard"><img src="https://api.scorecard.dev/projects/github.com/CTU-SematX/Lego-Dashboard/badge"></a>
 <a href="https://github.com/CTU-SematX/Lego-Dashboard/releases"><img src="https://img.shields.io/github/v/release/CTU-SematX/Lego-Dashboard?label=Version"></a>
 <a href="https://github.com/CTU-SematX/Lego-Dashboard/graphs/commit-activity"><img src="https://img.shields.io/github/commit-activity/m/CTU-SematX/Lego-Dashboard"></a>
 <a href="https://github.com/CTU-SematX/Lego-Dashboard/graphs/contributors"><img src="https://img.shields.io/github/contributors/CTU-SematX/Lego-Dashboard"></a>
-<a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg"></a>
+<a><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg"></a>
 
 **Description**: An alternative for WireCloud (FIWARE). A PayloadCMS template adapted for NGSI-LD using in smart city applications.
 

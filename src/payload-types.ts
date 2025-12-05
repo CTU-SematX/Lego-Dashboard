@@ -827,15 +827,15 @@ export interface NgsiSource {
    */
   name: string;
   /**
-   * The base URL of the NGSI-LD Context Broker
+   * Base URL of the NGSI-LD Context Broker
    */
   brokerUrl: string;
   /**
-   * Optional proxy URL if the broker requires a proxy
+   * Optional proxy URL
    */
   proxyUrl?: string | null;
   /**
-   * Fiware-Service header values for multi-tenancy (add one or more)
+   * Fiware-Service header values for multi-tenancy
    */
   serviceHeader?:
     | {
@@ -844,7 +844,7 @@ export interface NgsiSource {
       }[]
     | null;
   /**
-   * Fiware-ServicePath header values (e.g., /city/sensors). Multiple entries allowed.
+   * Fiware-ServicePath header values (e.g., /city/sensors)
    */
   servicePath?:
     | {

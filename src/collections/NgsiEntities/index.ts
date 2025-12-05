@@ -119,7 +119,11 @@ export const NgsiEntities: CollectionConfig = {
                         collection: 'ngsi-data-models',
                         id: data.dataModel,
                       })
-                      const type = modelDoc?.model || data.type || 'Entity'
+                      // Extract simple type name from URL if needed
+                      let type = modelDoc?.model || data.type || 'Entity'
+                      if (type.includes('/')) {
+                        type = type.split('/').pop() || type
+                      }
                       return `urn:ngsi-ld:${type}:${data.shortId}`
                     }
                     return data?.entityId

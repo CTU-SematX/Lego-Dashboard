@@ -22,6 +22,7 @@ import { BlocksFeatureClient as BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0
 import { FolderTableCell as FolderTableCell_ab83ff7e88da8d3530831f296ec4756a } from '@payloadcms/ui/rsc'
 import { FolderField as FolderField_ab83ff7e88da8d3530831f296ec4756a } from '@payloadcms/ui/rsc'
 import { HealthCheck as HealthCheck_3e31178d9256e12942c515b31dfa9614 } from '@/collections/NgsiSources/ui/HealthCheck'
+import { SyncEntities as SyncEntities_1c64fe921196d43e168f25b674db4098 } from '@/collections/NgsiSources/ui/SyncEntities'
 import { SyncButton as SyncButton_e14492072f49fdeed80c2e54859456c2 } from '@/collections/NgsiDataModels/ui/SyncButton'
 import { EntityIdPreview as EntityIdPreview_e93732815ed5b9a97b39a7ad46b5a6bc } from '@/collections/NgsiEntities/ui/EntityIdPreview'
 import { ServiceSelect as ServiceSelect_8fc27eb2dc18b99abedc1390f32fb959 } from '@/collections/NgsiEntities/ui/ServiceSelect'
@@ -63,6 +64,7 @@ export const importMap = {
   "@payloadcms/ui/rsc#FolderTableCell": FolderTableCell_ab83ff7e88da8d3530831f296ec4756a,
   "@payloadcms/ui/rsc#FolderField": FolderField_ab83ff7e88da8d3530831f296ec4756a,
   "@/collections/NgsiSources/ui/HealthCheck#HealthCheck": HealthCheck_3e31178d9256e12942c515b31dfa9614,
+  "@/collections/NgsiSources/ui/SyncEntities#SyncEntities": SyncEntities_1c64fe921196d43e168f25b674db4098,
   "@/collections/NgsiDataModels/ui/SyncButton#SyncButton": SyncButton_e14492072f49fdeed80c2e54859456c2,
   "@/collections/NgsiEntities/ui/EntityIdPreview#EntityIdPreview": EntityIdPreview_e93732815ed5b9a97b39a7ad46b5a6bc,
   "@/collections/NgsiEntities/ui/ServiceSelect#ServiceSelect": ServiceSelect_8fc27eb2dc18b99abedc1390f32fb959,

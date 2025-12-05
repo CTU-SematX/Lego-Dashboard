@@ -2,6 +2,11 @@ import type { CollectionConfig } from 'payload'
 
 import { authenticated } from '../../access/authenticated'
 import { healthCheckEndpoint } from './endpoints/healthCheck'
+import {
+  discoverEntitiesEndpoint,
+  importEntitiesEndpoint,
+  fetchEntityDetailsEndpoint,
+} from './endpoints/syncEntities'
 
 export const NgsiSources: CollectionConfig = {
   slug: 'ngsi-sources',
@@ -16,6 +21,21 @@ export const NgsiSources: CollectionConfig = {
       path: '/health-check',
       method: 'post',
       handler: healthCheckEndpoint,
+    },
+    {
+      path: '/discover-entities',
+      method: 'post',
+      handler: discoverEntitiesEndpoint,
+    },
+    {
+      path: '/import-entities',
+      method: 'post',
+      handler: importEntitiesEndpoint,
+    },
+    {
+      path: '/fetch-entity-details',
+      method: 'post',
+      handler: fetchEntityDetailsEndpoint,
     },
   ],
   admin: {
@@ -86,6 +106,15 @@ export const NgsiSources: CollectionConfig = {
       admin: {
         components: {
           Field: '@/collections/NgsiSources/ui/HealthCheck#HealthCheck',
+        },
+      },
+    },
+    {
+      name: 'syncEntities',
+      type: 'ui',
+      admin: {
+        components: {
+          Field: '@/collections/NgsiSources/ui/SyncEntities#SyncEntities',
         },
       },
     },

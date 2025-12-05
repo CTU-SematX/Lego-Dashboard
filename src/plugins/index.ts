@@ -107,7 +107,19 @@ export const plugins: Plugin[] = [
   mcpPlugin({collections:{
     posts:{
       enabled:true
-    }
+    },
+    "ngsi-data-models":{
+      enabled:true
+    },
+    "ngsi-domains":{
+      enabled:true
+    },
+    "ngsi-entities":{
+      enabled:true
+    },
+    "ngsi-sources":{
+      enabled:true
+    },
   }})
 ]
 

@@ -1143,6 +1143,78 @@ export interface PayloadMcpApiKey {
      */
     delete?: boolean | null;
   };
+  ngsiDataModels?: {
+    /**
+     * Allow clients to find ngsi-data-models.
+     */
+    find?: boolean | null;
+    /**
+     * Allow clients to create ngsi-data-models.
+     */
+    create?: boolean | null;
+    /**
+     * Allow clients to update ngsi-data-models.
+     */
+    update?: boolean | null;
+    /**
+     * Allow clients to delete ngsi-data-models.
+     */
+    delete?: boolean | null;
+  };
+  ngsiDomains?: {
+    /**
+     * Allow clients to find ngsi-domains.
+     */
+    find?: boolean | null;
+    /**
+     * Allow clients to create ngsi-domains.
+     */
+    create?: boolean | null;
+    /**
+     * Allow clients to update ngsi-domains.
+     */
+    update?: boolean | null;
+    /**
+     * Allow clients to delete ngsi-domains.
+     */
+    delete?: boolean | null;
+  };
+  ngsiEntities?: {
+    /**
+     * Allow clients to find ngsi-entities.
+     */
+    find?: boolean | null;
+    /**
+     * Allow clients to create ngsi-entities.
+     */
+    create?: boolean | null;
+    /**
+     * Allow clients to update ngsi-entities.
+     */
+    update?: boolean | null;
+    /**
+     * Allow clients to delete ngsi-entities.
+     */
+    delete?: boolean | null;
+  };
+  ngsiSources?: {
+    /**
+     * Allow clients to find ngsi-sources.
+     */
+    find?: boolean | null;
+    /**
+     * Allow clients to create ngsi-sources.
+     */
+    create?: boolean | null;
+    /**
+     * Allow clients to update ngsi-sources.
+     */
+    update?: boolean | null;
+    /**
+     * Allow clients to delete ngsi-sources.
+     */
+    delete?: boolean | null;
+  };
   updatedAt: string;
   createdAt: string;
   enableAPIKey?: boolean | null;
@@ -2019,6 +2091,38 @@ export interface PayloadMcpApiKeysSelect<T extends boolean = true> {
   label?: T;
   description?: T;
   posts?:
+    | T
+    | {
+        find?: T;
+        create?: T;
+        update?: T;
+        delete?: T;
+      };
+  ngsiDataModels?:
+    | T
+    | {
+        find?: T;
+        create?: T;
+        update?: T;
+        delete?: T;
+      };
+  ngsiDomains?:
+    | T
+    | {
+        find?: T;
+        create?: T;
+        update?: T;
+        delete?: T;
+      };
+  ngsiEntities?:
+    | T
+    | {
+        find?: T;
+        create?: T;
+        update?: T;
+        delete?: T;
+      };
+  ngsiSources?:
     | T
     | {
         find?: T;

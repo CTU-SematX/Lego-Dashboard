@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios'
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
 
 export const NGSI_LD_CORE_CONTEXT =
   'https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context-v1.8.jsonld'
@@ -10,12 +10,37 @@ export interface NgsiClientConfig {
   authToken?: string
 }
 
+export interface NgsiResponse<T = unknown> {
+  status: number
+  statusText: string
+  data: T
+  headers: Record<string, string>
+}
+
 /**
  * Build Link header for NGSI-LD context
  * Format: <context-url>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
  */
 export function buildLinkHeader(contextUrl: string): string {
   return `<${contextUrl}>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"`
+}
+
+/**
+ * Convert AxiosResponse to NgsiResponse
+ */
+function toNgsiResponse<T>(response: AxiosResponse<T>): NgsiResponse<T> {
+  const headers: Record<string, string> = {}
+  Object.entries(response.headers).forEach(([key, value]) => {
+    if (typeof value === 'string') {
+      headers[key] = value
+    }
+  })
+  return {
+    status: response.status,
+    statusText: response.statusText,
+    data: response.data,
+    headers,
+  }
 }
 
 /**
@@ -65,13 +90,18 @@ export class NgsiLdOperations {
    * CREATE entity - POST /ngsi-ld/v1/entities
    * Uses Content-Type: application/json + Link header (per tutorial examples)
    */
-  async createEntity(entity: { id: string; type: string; [key: string]: unknown }): Promise<void> {
-    await this.client.post('/ngsi-ld/v1/entities', entity, {
+  async createEntity(entity: {
+    id: string
+    type: string
+    [key: string]: unknown
+  }): Promise<NgsiResponse<void>> {
+    const response = await this.client.post('/ngsi-ld/v1/entities', entity, {
       headers: {
         'Content-Type': 'application/json',
         Link: buildLinkHeader(this.contextUrl),
       },
     })
+    return toNgsiResponse(response)
   }
 
   /**
@@ -81,9 +111,10 @@ export class NgsiLdOperations {
    */
   async getEntity(
     entityId: string,
-    options?: { embedContext?: boolean },
-  ): Promise<Record<string, unknown>> {
+    options?: { embedContext?: boolean; attrs?: string; options?: string },
+  ): Promise<NgsiResponse<Record<string, unknown>>> {
     const headers: Record<string, string> = {}
+    const params: Record<string, string> = {}
 
     if (options?.embedContext) {
       // Get response with @context embedded in body
@@ -95,30 +126,96 @@ export class NgsiLdOperations {
       headers['Link'] = buildLinkHeader(this.contextUrl)
     }
 
+    if (options?.attrs) {
+      params.attrs = options.attrs
+    }
+    if (options?.options) {
+      params.options = options.options
+    }
+
     const response = await this.client.get(`/ngsi-ld/v1/entities/${encodeURIComponent(entityId)}`, {
       headers,
+      params: Object.keys(params).length > 0 ? params : undefined,
     })
-    return response.data
+    return toNgsiResponse(response)
   }
 
   /**
    * UPDATE entity attributes - PATCH /ngsi-ld/v1/entities/{entityId}/attrs
    * Uses Content-Type: application/json + Link header
    */
-  async updateEntityAttrs(entityId: string, attrs: Record<string, unknown>): Promise<void> {
-    await this.client.patch(`/ngsi-ld/v1/entities/${encodeURIComponent(entityId)}/attrs`, attrs, {
-      headers: {
-        'Content-Type': 'application/json',
-        Link: buildLinkHeader(this.contextUrl),
+  async updateEntityAttrs(
+    entityId: string,
+    attrs: Record<string, unknown>,
+  ): Promise<NgsiResponse<void>> {
+    const response = await this.client.patch(
+      `/ngsi-ld/v1/entities/${encodeURIComponent(entityId)}/attrs`,
+      attrs,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          Link: buildLinkHeader(this.contextUrl),
+        },
       },
-    })
+    )
+    return toNgsiResponse(response)
+  }
+
+  /**
+   * APPEND entity attributes - POST /ngsi-ld/v1/entities/{entityId}/attrs
+   * Uses Content-Type: application/json + Link header
+   * Appends new attributes, doesn't overwrite existing ones by default
+   */
+  async appendEntityAttrs(
+    entityId: string,
+    attrs: Record<string, unknown>,
+    options?: { overwrite?: boolean },
+  ): Promise<NgsiResponse<void>> {
+    const params: Record<string, string> = {}
+    if (options?.overwrite === false) {
+      params.options = 'noOverwrite'
+    }
+
+    const response = await this.client.post(
+      `/ngsi-ld/v1/entities/${encodeURIComponent(entityId)}/attrs`,
+      attrs,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          Link: buildLinkHeader(this.contextUrl),
+        },
+        params: Object.keys(params).length > 0 ? params : undefined,
+      },
+    )
+    return toNgsiResponse(response)
   }
 
   /**
    * DELETE entity - DELETE /ngsi-ld/v1/entities/{entityId}
    */
-  async deleteEntity(entityId: string): Promise<void> {
-    await this.client.delete(`/ngsi-ld/v1/entities/${encodeURIComponent(entityId)}`)
+  async deleteEntity(entityId: string): Promise<NgsiResponse<void>> {
+    const response = await this.client.delete(
+      `/ngsi-ld/v1/entities/${encodeURIComponent(entityId)}`,
+    )
+    return toNgsiResponse(response)
+  }
+
+  /**
+   * DELETE entity attribute - DELETE /ngsi-ld/v1/entities/{entityId}/attrs/{attrName}
+   */
+  async deleteEntityAttr(entityId: string, attrName: string): Promise<NgsiResponse<void>> {
+    const response = await this.client.delete(
+      `/ngsi-ld/v1/entities/${encodeURIComponent(entityId)}/attrs/${encodeURIComponent(attrName)}`,
+    )
+    return toNgsiResponse(response)
+  }
+
+  /**
+   * HEAD entity - Check if entity exists
+   */
+  async headEntity(entityId: string): Promise<NgsiResponse<void>> {
+    const response = await this.client.head(`/ngsi-ld/v1/entities/${encodeURIComponent(entityId)}`)
+    return toNgsiResponse(response)
   }
 
   /**
@@ -134,6 +231,37 @@ export class NgsiLdOperations {
       }
       throw error
     }
+  }
+
+  /**
+   * Query entities - GET /ngsi-ld/v1/entities
+   */
+  async queryEntities(options?: {
+    type?: string
+    attrs?: string
+    q?: string
+    limit?: number
+    offset?: number
+    options?: string
+  }): Promise<NgsiResponse<Record<string, unknown>[]>> {
+    const headers: Record<string, string> = {
+      Accept: 'application/json',
+      Link: buildLinkHeader(this.contextUrl),
+    }
+    const params: Record<string, string | number> = {}
+
+    if (options?.type) params.type = options.type
+    if (options?.attrs) params.attrs = options.attrs
+    if (options?.q) params.q = options.q
+    if (options?.limit) params.limit = options.limit
+    if (options?.offset) params.offset = options.offset
+    if (options?.options) params.options = options.options
+
+    const response = await this.client.get('/ngsi-ld/v1/entities', {
+      headers,
+      params: Object.keys(params).length > 0 ? params : undefined,
+    })
+    return toNgsiResponse(response)
   }
 
   /**
@@ -155,5 +283,32 @@ export class NgsiLdOperations {
       await this.createEntity(entity)
       return 'created'
     }
+  }
+
+  /**
+   * Execute a raw request (for API client testing)
+   */
+  async rawRequest(
+    method: 'GET' | 'POST' | 'PATCH' | 'DELETE' | 'HEAD',
+    path: string,
+    options?: {
+      body?: unknown
+      headers?: Record<string, string>
+      params?: Record<string, string>
+    },
+  ): Promise<NgsiResponse<unknown>> {
+    const config: AxiosRequestConfig = {
+      method: method.toLowerCase(),
+      url: path,
+      headers: options?.headers,
+      params: options?.params,
+    }
+
+    if (options?.body && ['POST', 'PATCH'].includes(method)) {
+      config.data = options.body
+    }
+
+    const response = await this.client.request(config)
+    return toNgsiResponse(response)
   }
 }

@@ -1,5 +1,5 @@
 import type { PayloadHandler } from 'payload'
-import { NgsiLdOperations, NGSI_LD_CORE_CONTEXT } from '@/lib/ngsi-ld'
+import { NgsiLdOperations, NGSI_LD_CORE_CONTEXT, buildLinkHeader } from '@/lib/ngsi-ld'
 import axios from 'axios'
 
 export const fetchEntityEndpoint: PayloadHandler = async (req) => {
@@ -230,6 +230,312 @@ export const updateAttrsEndpoint: PayloadHandler = async (req) => {
     })
 
     return Response.json({ message: 'Attributes updated successfully' })
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : typeof error === 'object' && error !== null && 'response' in error
+          ? JSON.stringify((error as any).response?.data || error)
+          : 'Unknown error'
+
+    return Response.json({ error: errorMessage }, { status: 500 })
+  }
+}
+
+/**
+ * Direct broker API endpoint
+ * POST /api/ngsi-entities/:id/broker
+ * Allows executing any NGSI-LD operation directly on the broker
+ */
+export const brokerApiEndpoint: PayloadHandler = async (req) => {
+  const id = req.routeParams?.id as string
+
+  if (!id) {
+    return Response.json({ error: 'Entity ID is required' }, { status: 400 })
+  }
+
+  try {
+    const body = await req.json?.()
+    const { method, path, requestBody, headers: customHeaders, queryParams } = body || {}
+
+    if (!method || !path) {
+      return Response.json({ error: 'Method and path are required' }, { status: 400 })
+    }
+
+    const entity = await req.payload.findByID({
+      collection: 'ngsi-entities',
+      id,
+      depth: 2,
+    })
+
+    if (!entity) {
+      return Response.json({ error: 'Entity not found' }, { status: 404 })
+    }
+
+    const source = entity.source as any
+    const dataModel = entity.dataModel as any
+
+    if (!source?.brokerUrl) {
+      return Response.json({ error: 'Source broker URL not configured' }, { status: 400 })
+    }
+
+    const contextUrl = dataModel?.contextUrl || NGSI_LD_CORE_CONTEXT
+
+    // Create NGSI-LD operations client
+    const ngsi = new NgsiLdOperations(
+      {
+        brokerUrl: source.brokerUrl,
+        service: entity.service,
+        servicePath: entity.servicePath,
+        authToken: source.authToken,
+      },
+      contextUrl,
+    )
+
+    // Merge custom headers with Link header if needed
+    const mergedHeaders = { ...customHeaders }
+
+    // Add Link header for POST/PATCH operations
+    if (['POST', 'PATCH'].includes(method.toUpperCase())) {
+      if (!mergedHeaders['Link']) {
+        mergedHeaders['Link'] = buildLinkHeader(contextUrl)
+      }
+      if (!mergedHeaders['Content-Type']) {
+        mergedHeaders['Content-Type'] = 'application/json'
+      }
+    }
+
+    // Add Link header for GET operations (for compacted response)
+    if (method.toUpperCase() === 'GET') {
+      if (!mergedHeaders['Accept']) {
+        mergedHeaders['Accept'] = 'application/json'
+      }
+      if (!mergedHeaders['Link']) {
+        mergedHeaders['Link'] = buildLinkHeader(contextUrl)
+      }
+    }
+
+    const response = await ngsi.rawRequest(method.toUpperCase(), path, {
+      body: requestBody,
+      headers: mergedHeaders,
+      params: queryParams,
+    })
+
+    return Response.json({
+      status: response.status,
+      statusText: response.statusText,
+      data: response.data,
+      headers: response.headers,
+    })
+  } catch (error) {
+    let statusCode = 500
+    let errorData: unknown = 'Unknown error'
+
+    if (axios.isAxiosError(error)) {
+      statusCode = error.response?.status || 500
+      errorData = error.response?.data || { error: error.message }
+    } else if (error instanceof Error) {
+      errorData = { error: error.message }
+    }
+
+    return Response.json(
+      {
+        status: statusCode,
+        statusText: statusCode >= 400 ? 'Error' : 'OK',
+        data: errorData,
+        headers: {},
+      },
+      { status: 200 }, // Return 200 so we can show the error response in UI
+    )
+  }
+}
+
+/**
+ * Append entity attributes
+ * POST /api/ngsi-entities/:id/append-attrs
+ */
+export const appendAttrsEndpoint: PayloadHandler = async (req) => {
+  const id = req.routeParams?.id as string
+
+  if (!id) {
+    return Response.json({ error: 'Entity ID is required' }, { status: 400 })
+  }
+
+  try {
+    const body = await req.json?.()
+    const { attributes, overwrite = true } = body || {}
+
+    if (!attributes || typeof attributes !== 'object') {
+      return Response.json({ error: 'Attributes object is required' }, { status: 400 })
+    }
+
+    const entity = await req.payload.findByID({
+      collection: 'ngsi-entities',
+      id,
+      depth: 2,
+    })
+
+    if (!entity) {
+      return Response.json({ error: 'Entity not found' }, { status: 404 })
+    }
+
+    const source = entity.source as any
+    const dataModel = entity.dataModel as any
+
+    if (!source?.brokerUrl) {
+      return Response.json({ error: 'Source broker URL not configured' }, { status: 400 })
+    }
+
+    const contextUrl = dataModel?.contextUrl || NGSI_LD_CORE_CONTEXT
+
+    const ngsi = new NgsiLdOperations(
+      {
+        brokerUrl: source.brokerUrl,
+        service: entity.service,
+        servicePath: entity.servicePath,
+        authToken: source.authToken,
+      },
+      contextUrl,
+    )
+
+    await ngsi.appendEntityAttrs(entity.entityId, attributes, { overwrite })
+
+    return Response.json({ message: 'Attributes appended successfully' })
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : typeof error === 'object' && error !== null && 'response' in error
+          ? JSON.stringify((error as any).response?.data || error)
+          : 'Unknown error'
+
+    return Response.json({ error: errorMessage }, { status: 500 })
+  }
+}
+
+/**
+ * Delete entity attribute
+ * DELETE /api/ngsi-entities/:id/attrs/:attrName
+ */
+export const deleteAttrEndpoint: PayloadHandler = async (req) => {
+  const id = req.routeParams?.id as string
+
+  if (!id) {
+    return Response.json({ error: 'Entity ID is required' }, { status: 400 })
+  }
+
+  try {
+    const body = await req.json?.()
+    const { attrName } = body || {}
+
+    if (!attrName) {
+      return Response.json({ error: 'Attribute name is required' }, { status: 400 })
+    }
+
+    const entity = await req.payload.findByID({
+      collection: 'ngsi-entities',
+      id,
+      depth: 2,
+    })
+
+    if (!entity) {
+      return Response.json({ error: 'Entity not found' }, { status: 404 })
+    }
+
+    const source = entity.source as any
+    const dataModel = entity.dataModel as any
+
+    if (!source?.brokerUrl) {
+      return Response.json({ error: 'Source broker URL not configured' }, { status: 400 })
+    }
+
+    const contextUrl = dataModel?.contextUrl || NGSI_LD_CORE_CONTEXT
+
+    const ngsi = new NgsiLdOperations(
+      {
+        brokerUrl: source.brokerUrl,
+        service: entity.service,
+        servicePath: entity.servicePath,
+        authToken: source.authToken,
+      },
+      contextUrl,
+    )
+
+    await ngsi.deleteEntityAttr(entity.entityId, attrName)
+
+    return Response.json({ message: `Attribute "${attrName}" deleted successfully` })
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : typeof error === 'object' && error !== null && 'response' in error
+          ? JSON.stringify((error as any).response?.data || error)
+          : 'Unknown error'
+
+    return Response.json({ error: errorMessage }, { status: 500 })
+  }
+}
+
+/**
+ * Query entities of the same type
+ * GET /api/ngsi-entities/:id/query
+ */
+export const queryEntitiesEndpoint: PayloadHandler = async (req) => {
+  const id = req.routeParams?.id as string
+
+  if (!id) {
+    return Response.json({ error: 'Entity ID is required' }, { status: 400 })
+  }
+
+  try {
+    const entity = await req.payload.findByID({
+      collection: 'ngsi-entities',
+      id,
+      depth: 2,
+    })
+
+    if (!entity) {
+      return Response.json({ error: 'Entity not found' }, { status: 404 })
+    }
+
+    const source = entity.source as any
+    const dataModel = entity.dataModel as any
+
+    if (!source?.brokerUrl) {
+      return Response.json({ error: 'Source broker URL not configured' }, { status: 400 })
+    }
+
+    const contextUrl = dataModel?.contextUrl || NGSI_LD_CORE_CONTEXT
+
+    const ngsi = new NgsiLdOperations(
+      {
+        brokerUrl: source.brokerUrl,
+        service: entity.service,
+        servicePath: entity.servicePath,
+        authToken: source.authToken,
+      },
+      contextUrl,
+    )
+
+    // Get query params from URL
+    const url = new URL(req.url || '', 'http://localhost')
+    const type = url.searchParams.get('type') || entity.type
+    const q = url.searchParams.get('q') || undefined
+    const attrs = url.searchParams.get('attrs') || undefined
+    const limit = url.searchParams.get('limit') ? parseInt(url.searchParams.get('limit')!) : 20
+    const offset = url.searchParams.get('offset') ? parseInt(url.searchParams.get('offset')!) : 0
+    const options = url.searchParams.get('options') || undefined
+
+    const response = await ngsi.queryEntities({
+      type,
+      q,
+      attrs,
+      limit,
+      offset,
+      options,
+    })
+
+    return Response.json(response)
   } catch (error) {
     const errorMessage =
       error instanceof Error

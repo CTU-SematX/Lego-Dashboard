@@ -7,6 +7,10 @@ import {
   fetchEntityEndpoint,
   resyncEntityEndpoint,
   updateAttrsEndpoint,
+  brokerApiEndpoint,
+  appendAttrsEndpoint,
+  deleteAttrEndpoint,
+  queryEntitiesEndpoint,
 } from './endpoints/entityActions'
 
 export const NgsiEntities: CollectionConfig = {
@@ -38,6 +42,26 @@ export const NgsiEntities: CollectionConfig = {
       path: '/:id/update-attrs',
       method: 'post',
       handler: updateAttrsEndpoint,
+    },
+    {
+      path: '/:id/broker',
+      method: 'post',
+      handler: brokerApiEndpoint,
+    },
+    {
+      path: '/:id/append-attrs',
+      method: 'post',
+      handler: appendAttrsEndpoint,
+    },
+    {
+      path: '/:id/delete-attr',
+      method: 'post',
+      handler: deleteAttrEndpoint,
+    },
+    {
+      path: '/:id/query',
+      method: 'get',
+      handler: queryEntitiesEndpoint,
     },
   ],
   fields: [

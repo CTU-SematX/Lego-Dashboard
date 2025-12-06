@@ -173,54 +173,13 @@ export const NgsiEntities: CollectionConfig = {
               label: 'Entity Attributes',
               admin: {
                 description:
-                  'JSON object containing properties and relationships (exclude id, type, @context)',
+                  'JSON object containing properties and relationships (exclude id, type, @context). Template for creation only.',
+                condition: (_, siblingData) => !siblingData?.id,
               },
             },
           ],
         },
-        // TAB 2: Trạng thái & Logs (Sync Status)
-        {
-          label: 'Sync Status',
-          fields: [
-            {
-              type: 'row',
-              fields: [
-                {
-                  name: 'syncStatus',
-                  type: 'select',
-                  options: [
-                    { label: 'Synced', value: 'synced' },
-                    { label: 'Error', value: 'error' },
-                    { label: 'Pending', value: 'pending' },
-                  ],
-                  defaultValue: 'pending',
-                  admin: {
-                    readOnly: true, // Chỉ hook mới được sửa
-                    position: 'sidebar',
-                  },
-                },
-                {
-                  name: 'lastSyncTime',
-                  type: 'date',
-                  admin: {
-                    readOnly: true,
-                    date: { pickerAppearance: 'dayAndTime' },
-                  },
-                },
-              ],
-            },
-            {
-              name: 'lastSyncError',
-              type: 'textarea',
-              admin: {
-                readOnly: true,
-                rows: 3,
-                style: { color: 'red' },
-              },
-            },
-          ],
-        },
-        // TAB 3: Tương tác & Code (Developer Tools)
+        // TAB 2: Interact & Guide (Developer Tools)
         {
           label: 'Interact & Guide',
           fields: [
@@ -229,7 +188,6 @@ export const NgsiEntities: CollectionConfig = {
               type: 'ui',
               admin: {
                 components: {
-                  // Custom Component cho các nút Test GET/PUT và Code Viewer
                   Field: '@/collections/NgsiEntities/ui/EntityInteraction#EntityInteraction',
                 },
               },
@@ -238,7 +196,7 @@ export const NgsiEntities: CollectionConfig = {
         },
       ],
     },
-    // Field ẩn để lưu owner nếu cần phân quyền sau này
+    // Sidebar fields
     {
       name: 'owner',
       type: 'relationship',
@@ -256,6 +214,38 @@ export const NgsiEntities: CollectionConfig = {
             return value
           },
         ],
+      },
+    },
+    {
+      name: 'syncStatus',
+      type: 'select',
+      options: [
+        { label: 'Synced', value: 'synced' },
+        { label: 'Error', value: 'error' },
+        { label: 'Pending', value: 'pending' },
+      ],
+      defaultValue: 'pending',
+      admin: {
+        readOnly: true,
+        position: 'sidebar',
+      },
+    },
+    {
+      name: 'lastSyncTime',
+      type: 'date',
+      admin: {
+        readOnly: true,
+        position: 'sidebar',
+        date: { pickerAppearance: 'dayAndTime' },
+      },
+    },
+    {
+      name: 'lastSyncError',
+      type: 'textarea',
+      admin: {
+        readOnly: true,
+        position: 'sidebar',
+        rows: 3,
       },
     },
   ],

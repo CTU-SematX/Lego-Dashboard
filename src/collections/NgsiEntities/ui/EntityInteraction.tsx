@@ -2,10 +2,10 @@
 
 import React, { useState, useCallback } from 'react'
 import { useDocumentInfo, useFormFields, Button } from '@payloadcms/ui'
-import type { FieldClientComponent } from 'payload'
+import type { UIFieldClientComponent } from 'payload'
 import axios from 'axios'
 
-export const EntityInteraction: FieldClientComponent = () => {
+export const EntityInteraction: UIFieldClientComponent = () => {
   const [loading, setLoading] = useState(false)
   const [response, setResponse] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)

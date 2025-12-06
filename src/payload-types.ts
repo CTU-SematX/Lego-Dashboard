@@ -928,9 +928,9 @@ export interface NgsiEntity {
    */
   servicePath: string;
   /**
-   * JSON object containing properties and relationships (exclude id, type, @context)
+   * JSON object containing properties and relationships (exclude id, type, @context). Template for creation only.
    */
-  attributes:
+  attributes?:
     | {
         [k: string]: unknown;
       }
@@ -939,10 +939,10 @@ export interface NgsiEntity {
     | number
     | boolean
     | null;
+  owner?: (string | null) | User;
   syncStatus?: ('synced' | 'error' | 'pending') | null;
   lastSyncTime?: string | null;
   lastSyncError?: string | null;
-  owner?: (string | null) | User;
   updatedAt: string;
   createdAt: string;
 }
@@ -1813,10 +1813,10 @@ export interface NgsiEntitiesSelect<T extends boolean = true> {
   service?: T;
   servicePath?: T;
   attributes?: T;
+  owner?: T;
   syncStatus?: T;
   lastSyncTime?: T;
   lastSyncError?: T;
-  owner?: T;
   updatedAt?: T;
   createdAt?: T;
 }

@@ -30,7 +30,7 @@ node_modules/
 *.swp
 *.swo
 *~
-
+.github/instructions
 # ================================
 # OS Files
 # ================================

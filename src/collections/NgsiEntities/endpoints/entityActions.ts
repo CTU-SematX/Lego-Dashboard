@@ -162,3 +162,82 @@ export const resyncEntityEndpoint: PayloadHandler = async (req) => {
     return Response.json({ error: errorMessage }, { status: 500 })
   }
 }
+
+/**
+ * Update entity attributes directly on the broker
+ * POST /api/ngsi-entities/:id/update-attrs
+ */
+export const updateAttrsEndpoint: PayloadHandler = async (req) => {
+  const id = req.routeParams?.id as string
+
+  if (!id) {
+    return Response.json({ error: 'Entity ID is required' }, { status: 400 })
+  }
+
+  try {
+    const body = await req.json?.()
+    const attributes = body?.attributes
+
+    if (!attributes || typeof attributes !== 'object') {
+      return Response.json({ error: 'Attributes object is required' }, { status: 400 })
+    }
+
+    const entity = await req.payload.findByID({
+      collection: 'ngsi-entities',
+      id,
+      depth: 2,
+    })
+
+    if (!entity) {
+      return Response.json({ error: 'Entity not found' }, { status: 404 })
+    }
+
+    const source = entity.source as any
+    const dataModel = entity.dataModel as any
+
+    if (!source?.brokerUrl) {
+      return Response.json({ error: 'Source broker URL not configured' }, { status: 400 })
+    }
+
+    const contextUrl = dataModel?.contextUrl || NGSI_LD_CORE_CONTEXT
+
+    // Create NGSI-LD operations client
+    const ngsi = new NgsiLdOperations(
+      {
+        brokerUrl: source.brokerUrl,
+        service: entity.service,
+        servicePath: entity.servicePath,
+        authToken: source.authToken,
+      },
+      contextUrl,
+    )
+
+    // Update attributes on the broker
+    await ngsi.updateEntityAttrs(entity.entityId, attributes)
+
+    // Update sync status
+    await req.payload.update({
+      collection: 'ngsi-entities',
+      id,
+      data: {
+        syncStatus: 'synced',
+        lastSyncTime: new Date().toISOString(),
+        lastSyncError: null,
+      },
+      context: {
+        skipSync: true,
+      },
+    })
+
+    return Response.json({ message: 'Attributes updated successfully' })
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : typeof error === 'object' && error !== null && 'response' in error
+          ? JSON.stringify((error as any).response?.data || error)
+          : 'Unknown error'
+
+    return Response.json({ error: errorMessage }, { status: 500 })
+  }
+}

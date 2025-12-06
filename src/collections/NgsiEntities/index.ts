@@ -3,7 +3,11 @@ import { authenticated } from '@/access/authenticated'
 // Import các hooks
 import { syncToBrokerAfterChange } from './hooks/syncToBroker'
 import { deleteFromBrokerAfterDelete } from './hooks/deleteFromBroker'
-import { fetchEntityEndpoint, resyncEntityEndpoint } from './endpoints/entityActions'
+import {
+  fetchEntityEndpoint,
+  resyncEntityEndpoint,
+  updateAttrsEndpoint,
+} from './endpoints/entityActions'
 
 export const NgsiEntities: CollectionConfig = {
   slug: 'ngsi-entities',
@@ -29,6 +33,11 @@ export const NgsiEntities: CollectionConfig = {
       path: '/:id/resync',
       method: 'post',
       handler: resyncEntityEndpoint,
+    },
+    {
+      path: '/:id/update-attrs',
+      method: 'post',
+      handler: updateAttrsEndpoint,
     },
   ],
   fields: [

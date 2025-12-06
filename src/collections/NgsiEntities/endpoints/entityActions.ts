@@ -1,5 +1,5 @@
 import type { PayloadHandler } from 'payload'
-import { createNgsiClient, NGSI_LD_CORE_CONTEXT } from '@/lib/ngsi-client'
+import { NgsiLdOperations, NGSI_LD_CORE_CONTEXT } from '@/lib/ngsi-ld'
 import axios from 'axios'
 
 export const fetchEntityEndpoint: PayloadHandler = async (req) => {
@@ -31,26 +31,23 @@ export const fetchEntityEndpoint: PayloadHandler = async (req) => {
       return Response.json({ error: 'Entity ID (URN) not set' }, { status: 400 })
     }
 
-    const client = createNgsiClient({
-      brokerUrl: source.brokerUrl,
-      service: entity.service || undefined,
-      servicePath: entity.servicePath,
-      authToken: source.authToken,
-    })
-
     const contextUrl = dataModel?.contextUrl || NGSI_LD_CORE_CONTEXT
 
-    // NGSI-LD GET entity - use application/ld+json to get context embedded
-    const response = await client.get(
-      `/ngsi-ld/v1/entities/${encodeURIComponent(entity.entityId)}`,
+    // Create NGSI-LD operations client
+    const ngsi = new NgsiLdOperations(
       {
-        headers: {
-          Accept: 'application/ld+json',
-        },
+        brokerUrl: source.brokerUrl,
+        service: entity.service || undefined,
+        servicePath: entity.servicePath,
+        authToken: source.authToken,
       },
+      contextUrl,
     )
 
-    return Response.json(response.data)
+    // GET entity with compacted response (using Link header)
+    const data = await ngsi.getEntity(entity.entityId)
+
+    return Response.json(data)
   } catch (error) {
     let errorMessage = 'Unknown error'
     let statusCode = 500
@@ -96,44 +93,34 @@ export const resyncEntityEndpoint: PayloadHandler = async (req) => {
       return Response.json({ error: 'Source broker URL not configured' }, { status: 400 })
     }
 
-    const client = createNgsiClient({
-      brokerUrl: source.brokerUrl,
-      service: entity.service,
-      servicePath: entity.servicePath,
-      authToken: source.authToken,
-    })
+    const contextUrl = dataModel?.contextUrl || NGSI_LD_CORE_CONTEXT
 
-    const contextArray = [dataModel?.contextUrl || NGSI_LD_CORE_CONTEXT, NGSI_LD_CORE_CONTEXT]
+    // Create NGSI-LD operations client
+    const ngsi = new NgsiLdOperations(
+      {
+        brokerUrl: source.brokerUrl,
+        service: entity.service,
+        servicePath: entity.servicePath,
+        authToken: source.authToken,
+      },
+      contextUrl,
+    )
 
-    // Try to check if entity exists first
-    try {
-      await client.get(`/ngsi-ld/v1/entities/${encodeURIComponent(entity.entityId)}`)
-
-      // Entity exists, do PATCH
-      const attrsBody = {
-        '@context': contextArray,
-        ...entity.attributes,
-      }
-
-      await client.patch(
-        `/ngsi-ld/v1/entities/${encodeURIComponent(entity.entityId)}/attrs`,
-        attrsBody,
-      )
-    } catch (getError: any) {
-      if (getError.response?.status === 404) {
-        // Entity doesn't exist, do POST
-        const entityBody = {
-          id: entity.entityId,
-          type: entity.type || dataModel?.model,
-          '@context': contextArray,
-          ...entity.attributes,
-        }
-
-        await client.post('/ngsi-ld/v1/entities', entityBody)
-      } else {
-        throw getError
-      }
+    // Extract short type name (without URL prefix) for proper NGSI-LD format
+    let entityType = entity.type || dataModel?.model
+    if (entityType && entityType.includes('/')) {
+      entityType = entityType.split('/').pop() || entityType
     }
+
+    // Build entity body
+    const entityBody = {
+      id: entity.entityId,
+      type: entityType,
+      ...entity.attributes,
+    }
+
+    // Upsert - create if not exists, update if exists
+    await ngsi.upsertEntity(entityBody)
 
     // Update sync status
     await req.payload.update({

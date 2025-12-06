@@ -194,59 +194,67 @@ export const NgsiEntities: CollectionConfig = {
             },
           ],
         },
+        // TAB 3: Sync & Ownership
+        {
+          label: 'Sync Status',
+          fields: [
+            {
+              name: 'owner',
+              type: 'relationship',
+              relationTo: 'users',
+              admin: {
+                readOnly: true,
+              },
+              hooks: {
+                beforeChange: [
+                  ({ req, operation, value }) => {
+                    if (operation === 'create' && req.user) {
+                      return req.user.id
+                    }
+                    return value
+                  },
+                ],
+              },
+            },
+            {
+              type: 'row',
+              fields: [
+                {
+                  name: 'syncStatus',
+                  type: 'select',
+                  options: [
+                    { label: 'Synced', value: 'synced' },
+                    { label: 'Error', value: 'error' },
+                    { label: 'Pending', value: 'pending' },
+                  ],
+                  defaultValue: 'pending',
+                  admin: {
+                    readOnly: true,
+                    width: '50%',
+                  },
+                },
+                {
+                  name: 'lastSyncTime',
+                  type: 'date',
+                  admin: {
+                    readOnly: true,
+                    width: '50%',
+                    date: { pickerAppearance: 'dayAndTime' },
+                  },
+                },
+              ],
+            },
+            {
+              name: 'lastSyncError',
+              type: 'textarea',
+              admin: {
+                readOnly: true,
+                rows: 3,
+              },
+            },
+          ],
+        },
       ],
-    },
-    // Sidebar fields
-    {
-      name: 'owner',
-      type: 'relationship',
-      relationTo: 'users',
-      admin: {
-        position: 'sidebar',
-        readOnly: true,
-      },
-      hooks: {
-        beforeChange: [
-          ({ req, operation, value }) => {
-            if (operation === 'create' && req.user) {
-              return req.user.id
-            }
-            return value
-          },
-        ],
-      },
-    },
-    {
-      name: 'syncStatus',
-      type: 'select',
-      options: [
-        { label: 'Synced', value: 'synced' },
-        { label: 'Error', value: 'error' },
-        { label: 'Pending', value: 'pending' },
-      ],
-      defaultValue: 'pending',
-      admin: {
-        readOnly: true,
-        position: 'sidebar',
-      },
-    },
-    {
-      name: 'lastSyncTime',
-      type: 'date',
-      admin: {
-        readOnly: true,
-        position: 'sidebar',
-        date: { pickerAppearance: 'dayAndTime' },
-      },
-    },
-    {
-      name: 'lastSyncError',
-      type: 'textarea',
-      admin: {
-        readOnly: true,
-        position: 'sidebar',
-        rows: 3,
-      },
     },
   ],
   hooks: {

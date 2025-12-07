@@ -840,31 +840,30 @@ export interface NgsiCardBlock {
      */
     entity: string | NgsiEntity;
     /**
-     * How to filter entity attributes for display
-     */
-    attributeSelection?: ('all' | 'include' | 'exclude') | null;
-    /**
-     * Attributes to include or exclude based on selection mode
-     */
-    selectedAttributes?:
-      | {
-          attribute: string;
-          id?: string | null;
-        }[]
-      | null;
-    /**
      * Auto-refresh interval in seconds. Set 0 to disable.
      */
     refreshInterval?: number | null;
   };
-  displayOptions?: {
+  /**
+   * Use {{data.attributeName}} to insert values. Supports nested paths: {{data.address.streetAddress}}
+   */
+  cardContent?: {
     /**
-     * Card title. Use {{entityId}} or {{entityType}} as placeholders.
+     * Leave empty to use entity type as title.
      */
     title?: string | null;
+    /**
+     * Each line will be displayed as a separate line. Use {{data.xxx}} for values.
+     */
+    content?: string | null;
+    /**
+     * Display the full entity URN below the title.
+     */
     showEntityId?: boolean | null;
+    /**
+     * Display when the data was last refreshed.
+     */
     showLastUpdated?: boolean | null;
-    cardStyle?: ('default' | 'compact' | 'detailed') | null;
   };
   id?: string | null;
   blockName?: string | null;
@@ -1657,22 +1656,15 @@ export interface NgsiCardBlockSelect<T extends boolean = true> {
         tenant?: T;
         servicePath?: T;
         entity?: T;
-        attributeSelection?: T;
-        selectedAttributes?:
-          | T
-          | {
-              attribute?: T;
-              id?: T;
-            };
         refreshInterval?: T;
       };
-  displayOptions?:
+  cardContent?:
     | T
     | {
         title?: T;
+        content?: T;
         showEntityId?: T;
         showLastUpdated?: T;
-        cardStyle?: T;
       };
   id?: T;
   blockName?: T;

@@ -14,39 +14,52 @@ export const NgsiCard: Block = {
       defaultRefreshInterval: 30,
     }),
     {
-      name: 'displayOptions',
+      name: 'cardContent',
       type: 'group',
-      label: 'Display Options',
+      label: 'Card Content',
+      admin: {
+        description:
+          'Use {{data.attributeName}} to insert values. Supports nested paths: {{data.address.streetAddress}}',
+      },
       fields: [
         {
           name: 'title',
           type: 'text',
+          label: 'Title Template',
           admin: {
-            description: 'Card title. Use {{entityId}} or {{entityType}} as placeholders.',
-            placeholder: 'e.g., Weather Station {{entityId}}',
+            description: 'Leave empty to use entity type as title.',
+            placeholder: 'e.g., {{data.name}} or Building Info',
+          },
+        },
+        {
+          name: 'content',
+          type: 'textarea',
+          label: 'Content Template',
+          admin: {
+            description:
+              'Each line will be displayed as a separate line. Use {{data.xxx}} for values.',
+            placeholder:
+              '📍 {{data.address.streetAddress}}\n{{data.address.addressLocality}}, {{data.address.addressCountry}}\n\nCategory: {{data.category}}',
+            rows: 6,
           },
         },
         {
           name: 'showEntityId',
           type: 'checkbox',
-          defaultValue: true,
+          defaultValue: false,
           label: 'Show Entity ID',
+          admin: {
+            description: 'Display the full entity URN below the title.',
+          },
         },
         {
           name: 'showLastUpdated',
           type: 'checkbox',
           defaultValue: true,
           label: 'Show Last Updated Time',
-        },
-        {
-          name: 'cardStyle',
-          type: 'select',
-          defaultValue: 'default',
-          options: [
-            { label: 'Default', value: 'default' },
-            { label: 'Compact', value: 'compact' },
-            { label: 'Detailed', value: 'detailed' },
-          ],
+          admin: {
+            description: 'Display when the data was last refreshed.',
+          },
         },
       ],
     },

@@ -1,12 +1,8 @@
 'use client'
 
 import { useNgsiData, NgsiEntity as NgsiEntityData } from '../hooks/useNgsiData'
-import {
-  filterAttributes,
-  formatAttributeName,
-  getAttributeMetadata,
-} from '../lib/attributeHelpers'
-import type { AttributeSelectionMode } from '../fields/ngsiDataSource'
+import { extractAttributeValue, getEntityAttributeNames } from '../lib/attributeHelpers'
+import { parseTemplate, type TemplateContext } from '../lib/templateParser'
 import type { NgsiCardBlock as NgsiCardBlockType } from '@/payload-types'
 import {
   Card,
@@ -26,10 +22,10 @@ export interface NgsiCardBlockProps extends NgsiCardBlockType {
 /**
  * NgsiCard Block Component
  *
- * Displays a single NGSI-LD entity in a card format.
- * Data is fetched directly from the Context Broker via browser.
+ * Displays a single NGSI-LD entity using template-based content.
+ * Users can use {{data.xxx}} placeholders in title and content.
  */
-export function NgsiCardBlock({ dataSource, displayOptions, className }: NgsiCardBlockProps) {
+export function NgsiCardBlock({ dataSource, cardContent, className }: NgsiCardBlockProps) {
   // Extract configuration from populated relationships
   const source = typeof dataSource.source === 'object' ? dataSource.source : null
   const entity = typeof dataSource.entity === 'object' ? dataSource.entity : null
@@ -39,9 +35,6 @@ export function NgsiCardBlock({ dataSource, displayOptions, className }: NgsiCar
   const brokerUrl = source?.proxyUrl || source?.brokerUrl || ''
   const entityId = entity?.entityId || ''
   const contextUrl = dataModel?.contextUrl
-
-  // Get selected attributes list
-  const selectedAttrs = dataSource.selectedAttributes?.map((a) => a.attribute) || []
 
   // Fetch entity data
   const { data, isLoading, error, refetch, lastUpdated } = useNgsiData<NgsiEntityData>({
@@ -54,32 +47,40 @@ export function NgsiCardBlock({ dataSource, displayOptions, className }: NgsiCar
     enabled: Boolean(brokerUrl && entityId),
   })
 
-  // Filter attributes based on selection mode
-  const attributeMode = dataSource.attributeSelection || 'all'
-  const filteredAttributes = data
-    ? filterAttributes(data, attributeMode as AttributeSelectionMode, selectedAttrs)
-    : {}
+  // Build template context from entity data
+  const buildTemplateContext = (): TemplateContext | null => {
+    if (!data) return null
 
-  // Card style classes
-  const cardStyle = displayOptions?.cardStyle || 'default'
-  const cardClasses = cn(
-    'transition-shadow hover:shadow-md',
-    {
-      'p-2': cardStyle === 'compact',
-      'p-4': cardStyle === 'default',
-      'p-6': cardStyle === 'detailed',
-    },
-    className,
-  )
+    // Extract values from NGSI format
+    const processedData: Record<string, unknown> = {}
+    const attrNames = getEntityAttributeNames(data)
 
-  // Build title with placeholders
-  const buildTitle = () => {
-    let title = displayOptions?.title || 'NGSI Entity'
-    if (data) {
-      title = title.replace(/\{\{entityId\}\}/g, data.id).replace(/\{\{entityType\}\}/g, data.type)
+    for (const name of attrNames) {
+      processedData[name] = extractAttributeValue(data[name])
     }
-    return title
+
+    return {
+      entityId: data.id,
+      entityType: data.type,
+      data: processedData,
+    }
   }
+
+  const templateContext = buildTemplateContext()
+
+  // Parse templates
+  const parsedTitle = templateContext
+    ? parseTemplate(cardContent?.title || '', templateContext)
+    : ''
+  const parsedContent = templateContext
+    ? parseTemplate(cardContent?.content || '', templateContext)
+    : ''
+
+  // Fallback title if template is empty
+  const displayTitle = parsedTitle || data?.type || 'NGSI Entity'
+
+  // Card classes
+  const cardClasses = cn('transition-shadow hover:shadow-md', className)
 
   // Error state
   if (error) {
@@ -93,15 +94,12 @@ export function NgsiCardBlock({ dataSource, displayOptions, className }: NgsiCar
           <CardDescription>{entityId}</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">
-            {error.message}
-            {error.detail && <span className="block mt-1">{error.detail}</span>}
-          </p>
+          <p className="text-sm text-muted-foreground">{error.message}</p>
         </CardContent>
         <CardFooter>
           <button
             onClick={() => refetch()}
-            className="text-sm text-primary hover:underline flex items-center gap-1"
+            className="flex items-center gap-1 text-sm text-primary hover:underline"
           >
             <RefreshCw className="h-4 w-4" />
             Retry
@@ -116,13 +114,13 @@ export function NgsiCardBlock({ dataSource, displayOptions, className }: NgsiCar
     return (
       <Card className={cardClasses}>
         <CardHeader>
-          <CardTitle className="animate-pulse bg-muted h-6 w-48 rounded" />
-          <CardDescription className="animate-pulse bg-muted h-4 w-32 rounded mt-2" />
+          <div className="h-6 w-48 animate-pulse rounded bg-muted" />
+          <div className="mt-2 h-4 w-32 animate-pulse rounded bg-muted" />
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="animate-pulse bg-muted h-4 rounded" />
+              <div key={i} className="h-4 animate-pulse rounded bg-muted" />
             ))}
           </div>
         </CardContent>
@@ -144,83 +142,33 @@ export function NgsiCardBlock({ dataSource, displayOptions, className }: NgsiCar
 
   return (
     <Card className={cardClasses}>
-      <CardHeader className={cardStyle === 'compact' ? 'pb-2' : undefined}>
+      <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          <span>{buildTitle()}</span>
+          <span>{displayTitle}</span>
           {isLoading && <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />}
         </CardTitle>
-        {displayOptions?.showEntityId && (
-          <CardDescription className="flex items-center gap-1">
+        {cardContent?.showEntityId && (
+          <CardDescription className="flex items-center gap-1 font-mono text-xs">
             <ExternalLink className="h-3 w-3" />
             {data.id}
           </CardDescription>
         )}
       </CardHeader>
 
-      <CardContent className={cardStyle === 'compact' ? 'pt-0' : undefined}>
-        <dl
-          className={cn('space-y-2', {
-            'text-sm': cardStyle === 'compact',
-            'text-base': cardStyle === 'detailed',
-          })}
-        >
-          {Object.entries(filteredAttributes).map(([key, value]) => {
-            const metadata = getAttributeMetadata(data[key])
+      {parsedContent && (
+        <CardContent>
+          <div className="whitespace-pre-line text-sm leading-relaxed">{parsedContent}</div>
+        </CardContent>
+      )}
 
-            return (
-              <div
-                key={key}
-                className={cn('flex justify-between', {
-                  'flex-col gap-1': cardStyle === 'detailed',
-                  'items-center': cardStyle !== 'detailed',
-                })}
-              >
-                <dt className="font-medium text-muted-foreground">
-                  {formatAttributeName(key)}
-                  {metadata?.unitCode && (
-                    <span className="ml-1 text-xs">({metadata.unitCode})</span>
-                  )}
-                </dt>
-                <dd className="font-semibold">{formatValue(value)}</dd>
-              </div>
-            )
-          })}
-        </dl>
-      </CardContent>
-
-      {displayOptions?.showLastUpdated && lastUpdated && (
+      {cardContent?.showLastUpdated && lastUpdated && (
         <CardFooter className="text-xs text-muted-foreground">
-          <Clock className="h-3 w-3 mr-1" />
+          <Clock className="mr-1 h-3 w-3" />
           Last updated: {lastUpdated.toLocaleTimeString()}
         </CardFooter>
       )}
     </Card>
   )
-}
-
-/**
- * Format value for display
- */
-function formatValue(value: unknown): string {
-  if (value === null || value === undefined) {
-    return '—'
-  }
-
-  if (typeof value === 'boolean') {
-    return value ? 'Yes' : 'No'
-  }
-
-  if (typeof value === 'number') {
-    // Format numbers with reasonable precision
-    return Number.isInteger(value) ? String(value) : value.toFixed(2)
-  }
-
-  if (typeof value === 'object') {
-    // For geo coordinates or complex objects
-    return JSON.stringify(value)
-  }
-
-  return String(value)
 }
 
 export default NgsiCardBlock

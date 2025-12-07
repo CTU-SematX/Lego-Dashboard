@@ -347,6 +347,223 @@ pnpm generate:types
 
 ---
 
+## Phase 2.5: Template-Based Display (UX Improvement)
+
+### Vấn đề với Auto-Render
+
+Cách tiếp cận ban đầu (auto-render tất cả attributes) có nhược điểm:
+- Nested objects hiển thị raw JSON (khó đọc)
+- User không kiểm soát được format hiển thị
+- Không thể tạo custom text như "Nhiệt độ hôm nay là X độ C"
+
+### Giải pháp: Template Syntax
+
+User sử dụng `{{data.xxx}}` để chèn giá trị vào template:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ NGSI Card - Admin Config                                     │
+├─────────────────────────────────────────────────────────────┤
+│ Entity: [urn:ngsi-ld:Building:store001 ▼]                   │
+│                                                              │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ 📋 Available: data.name, data.address.streetAddress,    │ │
+│ │    data.address.addressLocality, data.category,         │ │
+│ │    data.location.coordinates                            │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│                                                              │
+│ Title:   [{{data.name}}                                 ]   │
+│                                                              │
+│ Content: [📍 {{data.address.streetAddress}}             ]   │
+│          [{{data.address.addressLocality}}, Vietnam     ]   │
+│          [                                              ]   │
+│          [Loại hình: {{data.category}}                  ]   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Output trên Frontend:**
+```
+┌─────────────────────────────┐
+│ Central Market              │
+│ ─────────────────────────── │
+│ 📍 123 Main Street          │
+│ Can Tho, Vietnam            │
+│                             │
+│ Loại hình: commercial       │
+└─────────────────────────────┘
+```
+
+### Task 2.5.1: Template Parser
+
+**File**: `src/blocks/NgsiBlocks/lib/templateParser.ts`
+
+```typescript
+/**
+ * Parse template string với {{placeholder}} syntax
+ * 
+ * Supported placeholders:
+ * - {{entityId}} - Entity ID (urn:ngsi-ld:Building:001)
+ * - {{entityType}} - Entity type (Building)
+ * - {{data.xxx}} - Attribute value (supports nested: data.address.street)
+ */
+
+export interface TemplateContext {
+  entityId: string
+  entityType: string
+  data: Record<string, unknown>  // Processed entity attributes (values extracted)
+}
+
+/**
+ * Parse template và replace placeholders với values
+ * Missing values trả về empty string
+ */
+export function parseTemplate(template: string, context: TemplateContext): string
+
+/**
+ * Extract all attribute paths từ entity object
+ * Dùng cho AttributeHints component
+ * 
+ * Input: { name: "X", address: { street: "Y", city: "Z" } }
+ * Output: ["data.name", "data.address.street", "data.address.city"]
+ */
+export function extractAttributePaths(entity: Record<string, unknown>): string[]
+
+/**
+ * Get value from nested path
+ * getNestedValue({ a: { b: 1 } }, "a.b") => 1
+ */
+export function getNestedValue(obj: Record<string, unknown>, path: string): unknown
+```
+
+**Implementation notes:**
+- Regex: `/\{\{([^}]+)\}\}/g`
+- Nested path: split by `.` và traverse
+- Missing value: return `''` (empty string) - không hiện `{{data.xxx}}`
+
+### Task 2.5.2: AttributeHints Component
+
+**File**: `src/blocks/NgsiBlocks/components/AttributeHints.tsx`
+
+```typescript
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useFormFields } from '@payloadcms/ui'
+
+/**
+ * Admin UI component hiển thị available attributes sau khi chọn entity
+ * Render trong block config UI
+ */
+export const AttributeHints: React.FC = () => {
+  // Watch entity field changes
+  // Fetch entity data when entity selected
+  // Display available paths as copyable chips
+}
+```
+
+**UI Design:**
+- Panel với header "Available Attributes"
+- List các path dạng `data.name`, `data.address.street`
+- Click to copy vào clipboard
+- Loading state khi fetching entity
+
+### Task 2.5.3: Update NgsiCard Config
+
+**File**: `src/blocks/NgsiBlocks/NgsiCard/config.ts`
+
+**Changes:**
+- Thay `displayOptions` group bằng `cardContent` group
+- Fields:
+  - `title`: text field với placeholder hint về syntax
+  - `content`: textarea cho multi-line template
+  - `showEntityId`: checkbox (giữ lại)
+  - `showLastUpdated`: checkbox (giữ lại)
+- Thêm `AttributeHints` component trong admin UI
+
+```typescript
+{
+  name: 'cardContent',
+  type: 'group',
+  label: 'Card Content',
+  admin: {
+    description: 'Use {{data.attributeName}} to insert values. Nested: {{data.address.street}}'
+  },
+  fields: [
+    {
+      name: 'title',
+      type: 'text',
+      label: 'Title Template',
+      admin: {
+        placeholder: 'e.g., {{data.name}} or Building {{entityId}}'
+      }
+    },
+    {
+      name: 'content',
+      type: 'textarea',
+      label: 'Content Template',
+      admin: {
+        placeholder: '📍 {{data.address.streetAddress}}\n{{data.address.addressLocality}}',
+        rows: 5
+      }
+    },
+    {
+      name: 'showEntityId',
+      type: 'checkbox',
+      label: 'Show Entity ID',
+      defaultValue: false
+    },
+    {
+      name: 'showLastUpdated',
+      type: 'checkbox', 
+      label: 'Show Last Updated Time',
+      defaultValue: true
+    }
+  ]
+}
+```
+
+### Task 2.5.4: Update NgsiCard Component
+
+**File**: `src/blocks/NgsiBlocks/NgsiCard/Component.tsx`
+
+**Changes:**
+- Import và sử dụng `parseTemplate()`
+- Build `TemplateContext` từ entity data
+- Render:
+  - Title: `parseTemplate(cardContent.title, context)`
+  - Content: `parseTemplate(cardContent.content, context)` với `whitespace-pre-line`
+  - Optional: Entity ID, Last Updated
+
+```tsx
+// Simplified render
+<Card>
+  <CardHeader>
+    <CardTitle>{parsedTitle || entityType}</CardTitle>
+    {showEntityId && <CardDescription>{entityId}</CardDescription>}
+  </CardHeader>
+  <CardContent>
+    <p className="whitespace-pre-line">{parsedContent}</p>
+  </CardContent>
+  {showLastUpdated && (
+    <CardFooter>
+      <Clock className="h-3 w-3" />
+      <span>Last updated: {formatTime(lastUpdated)}</span>
+    </CardFooter>
+  )}
+</Card>
+```
+
+### Design Decisions
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Missing value display | Empty string `''` | Không gây confusion, user thấy ngay thiếu data |
+| Autocomplete trong textarea | Panel hints (không inline) | Đơn giản hơn, tránh complexity của inline autocomplete |
+| Rich text support | Plain text + line breaks | MVP first, rich text là nice-to-have |
+| Fallback title | `{{entityType}}` | Luôn có title dù user không config |
+
+---
+
 ## Phase 3: NgsiTable Block
 
 ### Task 3.1-3.3: Tương tự Phase 2

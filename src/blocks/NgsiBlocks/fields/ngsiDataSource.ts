@@ -17,6 +17,11 @@ export interface NgsiDataSourceOptions {
    */
   defaultRefreshInterval?: number
   /**
+   * Show attribute selection fields (for Table/Map blocks)
+   * Template-based blocks (Card) don't need this
+   */
+  showAttributeSelection?: boolean
+  /**
    * Additional fields to add after data source fields
    */
   additionalFields?: Field[]
@@ -49,6 +54,7 @@ export const ngsiDataSource = (options: NgsiDataSourceOptions = {}): Field => {
     multipleEntities = false,
     showRefreshInterval = true,
     defaultRefreshInterval = 0,
+    showAttributeSelection = false,
     additionalFields = [],
     overrides = {},
   } = options
@@ -126,42 +132,44 @@ export const ngsiDataSource = (options: NgsiDataSourceOptions = {}): Field => {
     })
   }
 
-  // Attribute selection
-  baseFields.push(
-    {
-      name: 'attributeSelection',
-      type: 'select',
-      defaultValue: 'all',
-      options: [
-        { label: 'Show all attributes', value: 'all' },
-        { label: 'Include only selected', value: 'include' },
-        { label: 'Exclude selected', value: 'exclude' },
-      ],
-      admin: {
-        description: 'How to filter entity attributes for display',
-      },
-    },
-    {
-      name: 'selectedAttributes',
-      type: 'array',
-      admin: {
-        description: 'Attributes to include or exclude based on selection mode',
-        condition: (_data, siblingData) => {
-          return siblingData?.attributeSelection !== 'all'
+  // Attribute selection (optional, for Table/Map blocks)
+  if (showAttributeSelection) {
+    baseFields.push(
+      {
+        name: 'attributeSelection',
+        type: 'select',
+        defaultValue: 'all',
+        options: [
+          { label: 'Show all attributes', value: 'all' },
+          { label: 'Include only selected', value: 'include' },
+          { label: 'Exclude selected', value: 'exclude' },
+        ],
+        admin: {
+          description: 'How to filter entity attributes for display',
         },
       },
-      fields: [
-        {
-          name: 'attribute',
-          type: 'text',
-          required: true,
-          admin: {
-            placeholder: 'e.g., temperature, humidity',
+      {
+        name: 'selectedAttributes',
+        type: 'array',
+        admin: {
+          description: 'Attributes to include or exclude based on selection mode',
+          condition: (_data, siblingData) => {
+            return siblingData?.attributeSelection !== 'all'
           },
         },
-      ],
-    },
-  )
+        fields: [
+          {
+            name: 'attribute',
+            type: 'text',
+            required: true,
+            admin: {
+              placeholder: 'e.g., temperature, humidity',
+            },
+          },
+        ],
+      },
+    )
+  }
 
   // Refresh interval
   if (showRefreshInterval) {

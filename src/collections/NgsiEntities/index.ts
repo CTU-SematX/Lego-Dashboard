@@ -285,6 +285,15 @@ export const NgsiEntities: CollectionConfig = {
                 rows: 3,
               },
             },
+            {
+              name: 'attributePaths',
+              type: 'json',
+              admin: {
+                readOnly: true,
+                description:
+                  'Pre-computed attribute paths for autocomplete (auto-populated on sync)',
+              },
+            },
           ],
         },
       ],

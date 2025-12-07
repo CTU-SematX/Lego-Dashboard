@@ -2,6 +2,69 @@ import type { PayloadHandler } from 'payload'
 import { NgsiLdOperations, NGSI_LD_CORE_CONTEXT, buildLinkHeader } from '@/lib/ngsi-ld'
 import axios from 'axios'
 
+/**
+ * Extract all attribute paths from NGSI-LD entity data for autocomplete.
+ * Returns paths like: ["data.name", "data.address", "data.address.streetAddress", ...]
+ */
+function extractEntityAttributePaths(entityData: Record<string, unknown>): string[] {
+  const paths: string[] = []
+  const systemFields = ['id', 'type', '@context']
+
+  function extractValue(attr: unknown): unknown {
+    if (typeof attr !== 'object' || attr === null) return attr
+    const obj = attr as Record<string, unknown>
+
+    // Handle NGSI-LD Property/Relationship/GeoProperty
+    if ('value' in obj) return obj.value
+    if ('object' in obj) return obj.object
+    if ('coordinates' in obj) return obj // GeoProperty - keep as object
+
+    return attr
+  }
+
+  function traverse(obj: unknown, prefix: string) {
+    if (typeof obj !== 'object' || obj === null) {
+      paths.push(prefix)
+      return
+    }
+
+    if (Array.isArray(obj)) {
+      paths.push(prefix) // Array itself is a leaf
+      return
+    }
+
+    const record = obj as Record<string, unknown>
+
+    // Check if this is a simple object (not nested NGSI structure)
+    const keys = Object.keys(record)
+    const hasNestedObjects = keys.some((k) => {
+      const val = record[k]
+      return typeof val === 'object' && val !== null && !Array.isArray(val)
+    })
+
+    if (!hasNestedObjects || keys.length === 0) {
+      paths.push(prefix)
+      return
+    }
+
+    // Traverse nested objects
+    for (const key of keys) {
+      const childPath = prefix ? `${prefix}.${key}` : key
+      traverse(record[key], childPath)
+    }
+  }
+
+  // Process each attribute
+  for (const [key, value] of Object.entries(entityData)) {
+    if (systemFields.includes(key)) continue
+
+    const extractedValue = extractValue(value)
+    traverse(extractedValue, `data.${key}`)
+  }
+
+  return paths.sort()
+}
+
 export const fetchEntityEndpoint: PayloadHandler = async (req) => {
   const id = req.routeParams?.id as string
 
@@ -47,7 +110,24 @@ export const fetchEntityEndpoint: PayloadHandler = async (req) => {
     // GET entity with compacted response (using Link header)
     const data = await ngsi.getEntity(entity.entityId)
 
-    return Response.json(data)
+    // Compute attribute paths from fetched data
+    const attributePaths = extractEntityAttributePaths(data as unknown as Record<string, unknown>)
+
+    // Update stored paths if different (in background, don't wait)
+    const currentPaths =
+      ((entity as unknown as Record<string, unknown>).attributePaths as string[]) || []
+    if (JSON.stringify(currentPaths) !== JSON.stringify(attributePaths)) {
+      req.payload
+        .update({
+          collection: 'ngsi-entities',
+          id,
+          data: { attributePaths } as Record<string, unknown>,
+          context: { skipSync: true },
+        })
+        .catch(() => {}) // Ignore errors
+    }
+
+    return Response.json({ ...(data as object), _attributePaths: attributePaths })
   } catch (error) {
     let errorMessage = 'Unknown error'
     let statusCode = 500
@@ -116,13 +196,27 @@ export const resyncEntityEndpoint: PayloadHandler = async (req) => {
     const entityBody = {
       id: entity.entityId,
       type: entityType,
-      ...entity.attributes,
+      ...(entity.attributes as object),
     }
 
     // Upsert - create if not exists, update if exists
     await ngsi.upsertEntity(entityBody)
 
-    // Update sync status
+    // Fetch the entity back from broker to get actual attribute structure
+    let attributePaths: string[] = []
+    try {
+      const brokerEntity = await ngsi.getEntity(entity.entityId)
+      attributePaths = extractEntityAttributePaths(
+        brokerEntity as unknown as Record<string, unknown>,
+      )
+    } catch (fetchError) {
+      // If we can't fetch, use the local attributes
+      if (entity.attributes) {
+        attributePaths = extractEntityAttributePaths(entity.attributes as Record<string, unknown>)
+      }
+    }
+
+    // Update sync status and attribute paths
     await req.payload.update({
       collection: 'ngsi-entities',
       id,
@@ -130,13 +224,14 @@ export const resyncEntityEndpoint: PayloadHandler = async (req) => {
         syncStatus: 'synced',
         lastSyncTime: new Date().toISOString(),
         lastSyncError: null,
-      },
+        attributePaths: attributePaths,
+      } as Record<string, unknown>,
       context: {
         skipSync: true,
       },
     })
 
-    return Response.json({ message: 'Entity resynced successfully' })
+    return Response.json({ message: 'Entity resynced successfully', attributePaths })
   } catch (error) {
     const errorMessage =
       error instanceof Error

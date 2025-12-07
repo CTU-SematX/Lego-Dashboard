@@ -845,15 +845,15 @@ export interface NgsiCardBlock {
     refreshInterval?: number | null;
   };
   /**
-   * Use {{data.attributeName}} to insert values. Supports nested paths: {{data.address.streetAddress}}
+   * Type {{ to see available placeholders with autocomplete.
    */
   cardContent?: {
     /**
-     * Leave empty to use entity type as title.
+     * Leave empty to use entity type as title. Type {{ for suggestions.
      */
     title?: string | null;
     /**
-     * Each line will be displayed as a separate line. Use {{data.xxx}} for values.
+     * Type {{ to insert values with autocomplete.
      */
     content?: string | null;
     /**
@@ -956,6 +956,18 @@ export interface NgsiEntity {
   syncStatus?: ('synced' | 'error' | 'pending') | null;
   lastSyncTime?: string | null;
   lastSyncError?: string | null;
+  /**
+   * Pre-computed attribute paths for autocomplete (auto-populated on sync)
+   */
+  attributePaths?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1898,6 +1910,7 @@ export interface NgsiEntitiesSelect<T extends boolean = true> {
   syncStatus?: T;
   lastSyncTime?: T;
   lastSyncError?: T;
+  attributePaths?: T;
   updatedAt?: T;
   createdAt?: T;
 }

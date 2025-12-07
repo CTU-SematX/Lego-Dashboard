@@ -18,8 +18,7 @@ export const NgsiCard: Block = {
       type: 'group',
       label: 'Card Content',
       admin: {
-        description:
-          'Use {{data.attributeName}} to insert values. Supports nested paths: {{data.address.streetAddress}}',
+        description: 'Type {{ to see available placeholders with autocomplete.',
       },
       fields: [
         {
@@ -27,7 +26,7 @@ export const NgsiCard: Block = {
           type: 'text',
           label: 'Title Template',
           admin: {
-            description: 'Leave empty to use entity type as title.',
+            description: 'Leave empty to use entity type as title. Type {{ for suggestions.',
             placeholder: 'e.g., {{data.name}} or Building Info',
           },
         },
@@ -36,11 +35,13 @@ export const NgsiCard: Block = {
           type: 'textarea',
           label: 'Content Template',
           admin: {
-            description:
-              'Each line will be displayed as a separate line. Use {{data.xxx}} for values.',
+            description: 'Type {{ to insert values with autocomplete.',
             placeholder:
               '📍 {{data.address.streetAddress}}\n{{data.address.addressLocality}}, {{data.address.addressCountry}}\n\nCategory: {{data.category}}',
             rows: 6,
+            components: {
+              Field: '@/blocks/NgsiBlocks/NgsiCard/ContentTemplateField#ContentTemplateField',
+            },
           },
         },
         {

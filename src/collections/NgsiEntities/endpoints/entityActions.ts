@@ -110,24 +110,7 @@ export const fetchEntityEndpoint: PayloadHandler = async (req) => {
     // GET entity with compacted response (using Link header)
     const data = await ngsi.getEntity(entity.entityId)
 
-    // Compute attribute paths from fetched data
-    const attributePaths = extractEntityAttributePaths(data as unknown as Record<string, unknown>)
-
-    // Update stored paths if different (in background, don't wait)
-    const currentPaths =
-      ((entity as unknown as Record<string, unknown>).attributePaths as string[]) || []
-    if (JSON.stringify(currentPaths) !== JSON.stringify(attributePaths)) {
-      req.payload
-        .update({
-          collection: 'ngsi-entities',
-          id,
-          data: { attributePaths } as Record<string, unknown>,
-          context: { skipSync: true },
-        })
-        .catch(() => {}) // Ignore errors
-    }
-
-    return Response.json({ ...(data as object), _attributePaths: attributePaths })
+    return Response.json(data as object)
   } catch (error) {
     let errorMessage = 'Unknown error'
     let statusCode = 500
@@ -179,7 +162,7 @@ export const resyncEntityEndpoint: PayloadHandler = async (req) => {
     const ngsi = new NgsiLdOperations(
       {
         brokerUrl: source.brokerUrl,
-        service: entity.service,
+        service: entity.service || undefined,
         servicePath: entity.servicePath,
         authToken: source.authToken,
       },
@@ -300,7 +283,7 @@ export const updateAttrsEndpoint: PayloadHandler = async (req) => {
     const ngsi = new NgsiLdOperations(
       {
         brokerUrl: source.brokerUrl,
-        service: entity.service,
+        service: entity.service || undefined,
         servicePath: entity.servicePath,
         authToken: source.authToken,
       },
@@ -380,7 +363,7 @@ export const brokerApiEndpoint: PayloadHandler = async (req) => {
     const ngsi = new NgsiLdOperations(
       {
         brokerUrl: source.brokerUrl,
-        service: entity.service,
+        service: entity.service || undefined,
         servicePath: entity.servicePath,
         authToken: source.authToken,
       },
@@ -486,7 +469,7 @@ export const appendAttrsEndpoint: PayloadHandler = async (req) => {
     const ngsi = new NgsiLdOperations(
       {
         brokerUrl: source.brokerUrl,
-        service: entity.service,
+        service: entity.service || undefined,
         servicePath: entity.servicePath,
         authToken: source.authToken,
       },
@@ -549,7 +532,7 @@ export const deleteAttrEndpoint: PayloadHandler = async (req) => {
     const ngsi = new NgsiLdOperations(
       {
         brokerUrl: source.brokerUrl,
-        service: entity.service,
+        service: entity.service || undefined,
         servicePath: entity.servicePath,
         authToken: source.authToken,
       },
@@ -605,7 +588,7 @@ export const queryEntitiesEndpoint: PayloadHandler = async (req) => {
     const ngsi = new NgsiLdOperations(
       {
         brokerUrl: source.brokerUrl,
-        service: entity.service,
+        service: entity.service || undefined,
         servicePath: entity.servicePath,
         authToken: source.authToken,
       },
@@ -614,7 +597,7 @@ export const queryEntitiesEndpoint: PayloadHandler = async (req) => {
 
     // Get query params from URL
     const url = new URL(req.url || '', 'http://localhost')
-    const type = url.searchParams.get('type') || entity.type
+    const type = url.searchParams.get('type') || entity.type || undefined
     const q = url.searchParams.get('q') || undefined
     const attrs = url.searchParams.get('attrs') || undefined
     const limit = url.searchParams.get('limit') ? parseInt(url.searchParams.get('limit')!) : 20

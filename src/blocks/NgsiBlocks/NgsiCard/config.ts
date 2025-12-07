@@ -18,7 +18,7 @@ export const NgsiCard: Block = {
       type: 'group',
       label: 'Card Content',
       admin: {
-        description: 'Type {{ to see available placeholders with autocomplete.',
+        description: 'Use {{data.attributeName}} syntax for placeholders.',
       },
       fields: [
         {
@@ -26,7 +26,7 @@ export const NgsiCard: Block = {
           type: 'text',
           label: 'Title Template',
           admin: {
-            description: 'Leave empty to use entity type as title. Type {{ for suggestions.',
+            description: 'Leave empty to use entity type as title.',
             placeholder: 'e.g., {{data.name}} or Building Info',
           },
         },
@@ -35,7 +35,7 @@ export const NgsiCard: Block = {
           type: 'textarea',
           label: 'Content Template',
           admin: {
-            description: 'Type {{ to insert values with autocomplete.',
+            description: 'Use {{data.xxx}} for attribute values, {{entityId}} for URN.',
             placeholder:
               '📍 {{data.address.streetAddress}}\n{{data.address.addressLocality}}, {{data.address.addressCountry}}\n\nCategory: {{data.category}}',
             rows: 6,

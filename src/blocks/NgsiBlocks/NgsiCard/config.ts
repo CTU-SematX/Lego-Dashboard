@@ -12,6 +12,12 @@ export const NgsiCard: Block = {
     ngsiDataSource({
       showRefreshInterval: true,
       defaultRefreshInterval: 30,
+      overrides: {
+        admin: {
+          description:
+            'Select an entity to display. Broker and tenant info are read from the entity.',
+        },
+      },
     }),
     {
       name: 'cardContent',

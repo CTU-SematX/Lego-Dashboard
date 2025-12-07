@@ -23,25 +23,29 @@ export interface NgsiCardBlockProps extends NgsiCardBlockType {
  * NgsiCard Block Component
  *
  * Displays a single NGSI-LD entity using template-based content.
- * Users can use {{data.xxx}} placeholders in title and content.
+ * Broker and tenant info are read from the entity's source relationship.
  */
 export function NgsiCardBlock({ dataSource, cardContent, className }: NgsiCardBlockProps) {
-  // Extract configuration from populated relationships
-  const source = typeof dataSource.source === 'object' ? dataSource.source : null
+  // Extract entity (populated relationship)
   const entity = typeof dataSource.entity === 'object' ? dataSource.entity : null
+
+  // Get broker source from entity (entity.source is the broker connection)
+  const source = entity && typeof entity.source === 'object' ? entity.source : null
   const dataModel = entity && typeof entity.dataModel === 'object' ? entity.dataModel : null
 
-  // Build configuration for the hook
+  // Build configuration from entity - broker/tenant comes from entity
   const brokerUrl = source?.proxyUrl || source?.brokerUrl || ''
   const entityId = entity?.entityId || ''
   const contextUrl = dataModel?.contextUrl
+  const tenant = entity?.service || undefined
+  const servicePath = entity?.servicePath || undefined
 
-  // Fetch entity data
+  // Fetch entity data from broker
   const { data, isLoading, error, refetch, lastUpdated } = useNgsiData<NgsiEntityData>({
     brokerUrl,
     entityId,
-    tenant: dataSource.tenant || undefined,
-    servicePath: dataSource.servicePath || undefined,
+    tenant,
+    servicePath,
     contextUrl,
     refreshInterval: dataSource.refreshInterval || 0,
     enabled: Boolean(brokerUrl && entityId),

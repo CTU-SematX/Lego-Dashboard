@@ -32,8 +32,8 @@ export interface NgsiDataSourceOptions {
 }
 
 /**
- * Shared fields factory for NGSI-LD data source configuration.
- * Use this in any block that needs to fetch NGSI-LD entity data.
+ * Simplified NGSI-LD data source configuration.
+ * Only requires entity selection - broker/tenant info is read from the entity.
  *
  * @example
  * ```ts
@@ -59,39 +59,21 @@ export const ngsiDataSource = (options: NgsiDataSourceOptions = {}): Field => {
     overrides = {},
   } = options
 
-  const baseFields: Field[] = [
-    // NGSI Source selection
-    {
-      name: 'source',
-      type: 'relationship',
-      relationTo: 'ngsi-sources',
-      required: true,
-      admin: {
-        description: 'Select the NGSI-LD broker connection',
-      },
-    },
-    // Multi-tenancy
-    {
-      name: 'tenant',
-      type: 'text',
-      admin: {
-        description: 'Tenant name (Fiware-Service header). Leave empty to use default.',
-        placeholder: 'e.g., Cantho',
-      },
-    },
-    {
-      name: 'servicePath',
-      type: 'text',
-      admin: {
-        description: 'Service path (Fiware-ServicePath header)',
-        placeholder: 'e.g., /city/sensors',
-      },
-    },
-  ]
+  const baseFields: Field[] = []
 
   // Entity selection - single or multiple
   if (multipleEntities) {
+    // For multiple entities, we need entity type and query
     baseFields.push(
+      {
+        name: 'source',
+        type: 'relationship',
+        relationTo: 'ngsi-sources',
+        required: true,
+        admin: {
+          description: 'Select the NGSI-LD broker for querying multiple entities',
+        },
+      },
       {
         name: 'entityType',
         type: 'text',
@@ -121,13 +103,15 @@ export const ngsiDataSource = (options: NgsiDataSourceOptions = {}): Field => {
       },
     )
   } else {
+    // Single entity mode - just select entity (broker/tenant read from entity)
     baseFields.push({
       name: 'entity',
       type: 'relationship',
       relationTo: 'ngsi-entities',
       required: true,
       admin: {
-        description: 'Select the NGSI-LD entity to display',
+        description:
+          'Select the NGSI-LD entity to display. Broker and tenant info will be read from the entity.',
       },
     })
   }

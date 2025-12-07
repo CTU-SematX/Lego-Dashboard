@@ -820,23 +820,11 @@ export interface Form {
  */
 export interface NgsiCardBlock {
   /**
-   * Configure NGSI-LD entity data source
+   * Select an entity to display. Broker and tenant info are read from the entity.
    */
   dataSource: {
     /**
-     * Select the NGSI-LD broker connection
-     */
-    source: string | NgsiSource;
-    /**
-     * Tenant name (Fiware-Service header). Leave empty to use default.
-     */
-    tenant?: string | null;
-    /**
-     * Service path (Fiware-ServicePath header)
-     */
-    servicePath?: string | null;
-    /**
-     * Select the NGSI-LD entity to display
+     * Select the NGSI-LD entity to display. Broker and tenant info will be read from the entity.
      */
     entity: string | NgsiEntity;
     /**
@@ -868,47 +856,6 @@ export interface NgsiCardBlock {
   id?: string | null;
   blockName?: string | null;
   blockType: 'ngsiCard';
-}
-/**
- * Configure NGSI-LD Context Broker sources
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "ngsi-sources".
- */
-export interface NgsiSource {
-  id: string;
-  /**
-   * A friendly name for this NGSI source
-   */
-  name: string;
-  /**
-   * Base URL of the NGSI-LD Context Broker
-   */
-  brokerUrl: string;
-  /**
-   * Optional proxy URL
-   */
-  proxyUrl?: string | null;
-  /**
-   * Fiware-Service header values for multi-tenancy
-   */
-  serviceHeader?:
-    | {
-        value?: string | null;
-        id?: string | null;
-      }[]
-    | null;
-  /**
-   * Fiware-ServicePath header values (e.g., /city/sensors)
-   */
-  servicePath?:
-    | {
-        value?: string | null;
-        id?: string | null;
-      }[]
-    | null;
-  updatedAt: string;
-  createdAt: string;
 }
 /**
  * Manage specific NGSI-LD Entities synced with Context Broker
@@ -1014,6 +961,47 @@ export interface NgsiDomain {
    * Domain name (e.g., "SmartCities", "SmartAgrifood")
    */
   name: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Configure NGSI-LD Context Broker sources
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ngsi-sources".
+ */
+export interface NgsiSource {
+  id: string;
+  /**
+   * A friendly name for this NGSI source
+   */
+  name: string;
+  /**
+   * Base URL of the NGSI-LD Context Broker
+   */
+  brokerUrl: string;
+  /**
+   * Optional proxy URL
+   */
+  proxyUrl?: string | null;
+  /**
+   * Fiware-Service header values for multi-tenancy
+   */
+  serviceHeader?:
+    | {
+        value?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Fiware-ServicePath header values (e.g., /city/sensors)
+   */
+  servicePath?:
+    | {
+        value?: string | null;
+        id?: string | null;
+      }[]
+    | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1668,9 +1656,6 @@ export interface NgsiCardBlockSelect<T extends boolean = true> {
   dataSource?:
     | T
     | {
-        source?: T;
-        tenant?: T;
-        servicePath?: T;
         entity?: T;
         refreshInterval?: T;
       };

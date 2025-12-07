@@ -845,15 +845,15 @@ export interface NgsiCardBlock {
     refreshInterval?: number | null;
   };
   /**
-   * Type {{ to see available placeholders with autocomplete.
+   * Use {{data.attributeName}} syntax for placeholders.
    */
   cardContent?: {
     /**
-     * Leave empty to use entity type as title. Type {{ for suggestions.
+     * Leave empty to use entity type as title.
      */
     title?: string | null;
     /**
-     * Type {{ to insert values with autocomplete.
+     * Use {{data.xxx}} for attribute values, {{entityId}} for URN.
      */
     content?: string | null;
     /**
@@ -941,7 +941,7 @@ export interface NgsiEntity {
    */
   servicePath: string;
   /**
-   * JSON object containing properties and relationships (exclude id, type, @context). Template for creation only.
+   * JSON object containing properties and relationships (exclude id, type, @context). Use "Fetch Example" to load sample data.
    */
   attributes?:
     | {
@@ -983,6 +983,10 @@ export interface NgsiDataModel {
    * The entity type name (e.g., "Building", "Device")
    */
   model: string;
+  /**
+   * Repository name from Smart Data Models (e.g., "dataModel.Building")
+   */
+  repoName?: string | null;
   /**
    * The direct URL to the context.jsonld file
    */
@@ -1878,6 +1882,7 @@ export interface NgsiSourcesSelect<T extends boolean = true> {
  */
 export interface NgsiDataModelsSelect<T extends boolean = true> {
   model?: T;
+  repoName?: T;
   contextUrl?: T;
   domains?: T;
   repoLink?: T;

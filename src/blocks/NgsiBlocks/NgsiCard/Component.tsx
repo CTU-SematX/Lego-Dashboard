@@ -29,11 +29,7 @@ export interface NgsiCardBlockProps extends NgsiCardBlockType {
  * Displays a single NGSI-LD entity in a card format.
  * Data is fetched directly from the Context Broker via browser.
  */
-export function NgsiCardBlock({
-  dataSource,
-  displayOptions,
-  className,
-}: NgsiCardBlockProps) {
+export function NgsiCardBlock({ dataSource, displayOptions, className }: NgsiCardBlockProps) {
   // Extract configuration from populated relationships
   const source = typeof dataSource.source === 'object' ? dataSource.source : null
   const entity = typeof dataSource.entity === 'object' ? dataSource.entity : null
@@ -80,9 +76,7 @@ export function NgsiCardBlock({
   const buildTitle = () => {
     let title = displayOptions?.title || 'NGSI Entity'
     if (data) {
-      title = title
-        .replace(/\{\{entityId\}\}/g, data.id)
-        .replace(/\{\{entityType\}\}/g, data.type)
+      title = title.replace(/\{\{entityId\}\}/g, data.id).replace(/\{\{entityType\}\}/g, data.type)
     }
     return title
   }
@@ -153,9 +147,7 @@ export function NgsiCardBlock({
       <CardHeader className={cardStyle === 'compact' ? 'pb-2' : undefined}>
         <CardTitle className="flex items-center justify-between">
           <span>{buildTitle()}</span>
-          {isLoading && (
-            <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
-          )}
+          {isLoading && <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />}
         </CardTitle>
         {displayOptions?.showEntityId && (
           <CardDescription className="flex items-center gap-1">
@@ -166,10 +158,12 @@ export function NgsiCardBlock({
       </CardHeader>
 
       <CardContent className={cardStyle === 'compact' ? 'pt-0' : undefined}>
-        <dl className={cn('space-y-2', {
-          'text-sm': cardStyle === 'compact',
-          'text-base': cardStyle === 'detailed',
-        })}>
+        <dl
+          className={cn('space-y-2', {
+            'text-sm': cardStyle === 'compact',
+            'text-base': cardStyle === 'detailed',
+          })}
+        >
           {Object.entries(filteredAttributes).map(([key, value]) => {
             const metadata = getAttributeMetadata(data[key])
 
@@ -187,9 +181,7 @@ export function NgsiCardBlock({
                     <span className="ml-1 text-xs">({metadata.unitCode})</span>
                   )}
                 </dt>
-                <dd className="font-semibold">
-                  {formatValue(value)}
-                </dd>
+                <dd className="font-semibold">{formatValue(value)}</dd>
               </div>
             )
           })}

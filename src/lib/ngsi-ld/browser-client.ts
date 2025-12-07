@@ -111,10 +111,7 @@ export class NgsiBrowserClient {
    * @param entityId - Full entity URN (e.g., "urn:ngsi-ld:WeatherObserved:006")
    * @param options - Optional: attrs to filter attributes
    */
-  async getEntity(
-    entityId: string,
-    options?: { attrs?: string[] },
-  ): Promise<NgsiEntity> {
+  async getEntity(entityId: string, options?: { attrs?: string[] }): Promise<NgsiEntity> {
     const url = new URL(
       `/ngsi-ld/v1/entities/${encodeURIComponent(entityId)}`,
       this.config.brokerUrl,
@@ -168,8 +165,6 @@ export class NgsiBrowserClient {
 /**
  * Create a configured browser client instance
  */
-export function createBrowserClient(
-  config: NgsiBrowserClientConfig,
-): NgsiBrowserClient {
+export function createBrowserClient(config: NgsiBrowserClientConfig): NgsiBrowserClient {
   return new NgsiBrowserClient(config)
 }

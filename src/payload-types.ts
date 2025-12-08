@@ -235,7 +235,7 @@ export interface Page {
       | null;
     media?: (string | null) | Media;
   };
-  layout: (CallToActionBlock | ContentBlock | MediaBlock | ArchiveBlock | FormBlock)[];
+  layout: (CallToActionBlock | ContentBlock | MediaBlock | ArchiveBlock | FormBlock | NgsiCardBlock)[];
   meta?: {
     title?: string | null;
     /**
@@ -815,6 +815,156 @@ export interface Form {
   createdAt: string;
 }
 /**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "NgsiCardBlock".
+ */
+export interface NgsiCardBlock {
+  /**
+   * Select an entity to display. Broker and tenant info are read from the entity.
+   */
+  dataSource: {
+    /**
+     * Select the NGSI-LD entity to display. Broker and tenant info will be read from the entity.
+     */
+    entity: string | NgsiEntity;
+    /**
+     * Auto-refresh interval in seconds. Set 0 to disable.
+     */
+    refreshInterval?: number | null;
+  };
+  /**
+   * Use {{data.attributeName}} syntax for placeholders.
+   */
+  cardContent?: {
+    /**
+     * Leave empty to use entity type as title.
+     */
+    title?: string | null;
+    /**
+     * Use {{data.xxx}} for attribute values, {{entityId}} for URN.
+     */
+    content?: string | null;
+    /**
+     * Display the full entity URN below the title.
+     */
+    showEntityId?: boolean | null;
+    /**
+     * Display when the data was last refreshed.
+     */
+    showLastUpdated?: boolean | null;
+  };
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'ngsiCard';
+}
+/**
+ * Manage specific NGSI-LD Entities synced with Context Broker
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ngsi-entities".
+ */
+export interface NgsiEntity {
+  id: string;
+  /**
+   * Select the Type & Context for this entity
+   */
+  dataModel: string | NgsiDataModel;
+  /**
+   * Auto-populated from Data Model
+   */
+  type?: string | null;
+  /**
+   * Short identifier (e.g., "001", "store001")
+   */
+  shortId: string;
+  entityId: string;
+  source: string | NgsiSource;
+  /**
+   * Select Fiware-Service from source or leave empty
+   */
+  service?: string | null;
+  /**
+   * Select Fiware-ServicePath from source
+   */
+  servicePath: string;
+  /**
+   * JSON object containing properties and relationships (exclude id, type, @context). Use "Fetch Example" to load sample data.
+   */
+  attributes?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  owner?: (string | null) | User;
+  syncStatus?: ('synced' | 'error' | 'pending') | null;
+  lastSyncTime?: string | null;
+  lastSyncError?: string | null;
+  /**
+   * Pre-computed attribute paths for autocomplete (auto-populated on sync)
+   */
+  attributePaths?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * NGSI-LD data models from Smart Data Models
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ngsi-data-models".
+ */
+export interface NgsiDataModel {
+  id: string;
+  /**
+   * The entity type name (e.g., "Building", "Device")
+   */
+  model: string;
+  /**
+   * Repository name from Smart Data Models (e.g., "dataModel.Building")
+   */
+  repoName?: string | null;
+  /**
+   * The direct URL to the context.jsonld file
+   */
+  contextUrl: string;
+  /**
+   * The domains this data model belongs to
+   */
+  domains?: (string | NgsiDomain)[] | null;
+  /**
+   * Link to the GitHub repository for this data model
+   */
+  repoLink?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * NGSI-LD data model domains
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ngsi-domains".
+ */
+export interface NgsiDomain {
+  id: string;
+  /**
+   * Domain name (e.g., "SmartCities", "SmartAgrifood")
+   */
+  name: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * Configure NGSI-LD Context Broker sources
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -852,97 +1002,6 @@ export interface NgsiSource {
         id?: string | null;
       }[]
     | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * NGSI-LD data models from Smart Data Models
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "ngsi-data-models".
- */
-export interface NgsiDataModel {
-  id: string;
-  /**
-   * The entity type name (e.g., "Building", "Device")
-   */
-  model: string;
-  /**
-   * The direct URL to the context.jsonld file
-   */
-  contextUrl: string;
-  /**
-   * The domains this data model belongs to
-   */
-  domains?: (string | NgsiDomain)[] | null;
-  /**
-   * Link to the GitHub repository for this data model
-   */
-  repoLink?: string | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * NGSI-LD data model domains
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "ngsi-domains".
- */
-export interface NgsiDomain {
-  id: string;
-  /**
-   * Domain name (e.g., "SmartCities", "SmartAgrifood")
-   */
-  name: string;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * Manage specific NGSI-LD Entities synced with Context Broker
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "ngsi-entities".
- */
-export interface NgsiEntity {
-  id: string;
-  /**
-   * Select the Type & Context for this entity
-   */
-  dataModel: string | NgsiDataModel;
-  /**
-   * Auto-populated from Data Model
-   */
-  type?: string | null;
-  /**
-   * Short identifier (e.g., "001", "store001")
-   */
-  shortId: string;
-  entityId: string;
-  source: string | NgsiSource;
-  /**
-   * Select Fiware-Service from source or leave empty
-   */
-  service?: string | null;
-  /**
-   * Select Fiware-ServicePath from source
-   */
-  servicePath: string;
-  /**
-   * JSON object containing properties and relationships (exclude id, type, @context). Template for creation only.
-   */
-  attributes?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  owner?: (string | null) | User;
-  syncStatus?: ('synced' | 'error' | 'pending') | null;
-  lastSyncTime?: string | null;
-  lastSyncError?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1489,6 +1548,7 @@ export interface PagesSelect<T extends boolean = true> {
         mediaBlock?: T | MediaBlockSelect<T>;
         archive?: T | ArchiveBlockSelect<T>;
         formBlock?: T | FormBlockSelect<T>;
+        ngsiCard?: T | NgsiCardBlockSelect<T>;
       };
   meta?:
     | T
@@ -1585,6 +1645,28 @@ export interface FormBlockSelect<T extends boolean = true> {
   form?: T;
   enableIntro?: T;
   introContent?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "NgsiCardBlock_select".
+ */
+export interface NgsiCardBlockSelect<T extends boolean = true> {
+  dataSource?:
+    | T
+    | {
+        entity?: T;
+        refreshInterval?: T;
+      };
+  cardContent?:
+    | T
+    | {
+        title?: T;
+        content?: T;
+        showEntityId?: T;
+        showLastUpdated?: T;
+      };
   id?: T;
   blockName?: T;
 }
@@ -1785,6 +1867,7 @@ export interface NgsiSourcesSelect<T extends boolean = true> {
  */
 export interface NgsiDataModelsSelect<T extends boolean = true> {
   model?: T;
+  repoName?: T;
   contextUrl?: T;
   domains?: T;
   repoLink?: T;
@@ -1817,6 +1900,7 @@ export interface NgsiEntitiesSelect<T extends boolean = true> {
   syncStatus?: T;
   lastSyncTime?: T;
   lastSyncError?: T;
+  attributePaths?: T;
   updatedAt?: T;
   createdAt?: T;
 }

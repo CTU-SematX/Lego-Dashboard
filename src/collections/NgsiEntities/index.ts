@@ -206,8 +206,11 @@ export const NgsiEntities: CollectionConfig = {
               label: 'Entity Attributes',
               admin: {
                 description:
-                  'JSON object containing properties and relationships (exclude id, type, @context). Template for creation only.',
+                  'JSON object containing properties and relationships (exclude id, type, @context). Use "Fetch Example" to load sample data.',
                 condition: (_, siblingData) => !siblingData?.id,
+                components: {
+                  Field: '@/collections/NgsiEntities/ui/AttributesField#AttributesField',
+                },
               },
             },
           ],
@@ -283,6 +286,15 @@ export const NgsiEntities: CollectionConfig = {
               admin: {
                 readOnly: true,
                 rows: 3,
+              },
+            },
+            {
+              name: 'attributePaths',
+              type: 'json',
+              admin: {
+                readOnly: true,
+                description:
+                  'Pre-computed attribute paths for autocomplete (auto-populated on sync)',
               },
             },
           ],

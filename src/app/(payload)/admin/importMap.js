@@ -9,6 +9,7 @@ import { UnderlineFeatureClient as UnderlineFeatureClient_e70f5e05f09f93e00b997e
 import { BoldFeatureClient as BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { ItalicFeatureClient as ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { LinkFeatureClient as LinkFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
+import { ContentTemplateField as ContentTemplateField_ed7c78ce04887c82bab857b5a3312b4f } from '@/blocks/NgsiBlocks/NgsiCard/ContentTemplateField'
 import { OverviewComponent as OverviewComponent_a8a977ebc872c5d5ea7ee689724c0860 } from '@payloadcms/plugin-seo/client'
 import { MetaTitleComponent as MetaTitleComponent_a8a977ebc872c5d5ea7ee689724c0860 } from '@payloadcms/plugin-seo/client'
 import { MetaImageComponent as MetaImageComponent_a8a977ebc872c5d5ea7ee689724c0860 } from '@payloadcms/plugin-seo/client'
@@ -27,6 +28,7 @@ import { SyncButton as SyncButton_e14492072f49fdeed80c2e54859456c2 } from '@/col
 import { EntityIdPreview as EntityIdPreview_e93732815ed5b9a97b39a7ad46b5a6bc } from '@/collections/NgsiEntities/ui/EntityIdPreview'
 import { ServiceSelect as ServiceSelect_8fc27eb2dc18b99abedc1390f32fb959 } from '@/collections/NgsiEntities/ui/ServiceSelect'
 import { ServicePathSelect as ServicePathSelect_78c019d54c02497f78ba81a12e1f7416 } from '@/collections/NgsiEntities/ui/ServicePathSelect'
+import { AttributesField as AttributesField_e5d15e929e96889998d25357a7f41e6d } from '@/collections/NgsiEntities/ui/AttributesField'
 import { EntityInteraction as EntityInteraction_8c72cf0d8f435ab809887d1edf487c00 } from '@/collections/NgsiEntities/ui/EntityInteraction'
 import { LinkToDoc as LinkToDoc_aead06e4cbf6b2620c5c51c9ab283634 } from '@payloadcms/plugin-search/client'
 import { ReindexButton as ReindexButton_aead06e4cbf6b2620c5c51c9ab283634 } from '@payloadcms/plugin-search/client'
@@ -51,6 +53,7 @@ export const importMap = {
   "@payloadcms/richtext-lexical/client#BoldFeatureClient": BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#ItalicFeatureClient": ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#LinkFeatureClient": LinkFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
+  "@/blocks/NgsiBlocks/NgsiCard/ContentTemplateField#ContentTemplateField": ContentTemplateField_ed7c78ce04887c82bab857b5a3312b4f,
   "@payloadcms/plugin-seo/client#OverviewComponent": OverviewComponent_a8a977ebc872c5d5ea7ee689724c0860,
   "@payloadcms/plugin-seo/client#MetaTitleComponent": MetaTitleComponent_a8a977ebc872c5d5ea7ee689724c0860,
   "@payloadcms/plugin-seo/client#MetaImageComponent": MetaImageComponent_a8a977ebc872c5d5ea7ee689724c0860,
@@ -69,6 +72,7 @@ export const importMap = {
   "@/collections/NgsiEntities/ui/EntityIdPreview#EntityIdPreview": EntityIdPreview_e93732815ed5b9a97b39a7ad46b5a6bc,
   "@/collections/NgsiEntities/ui/ServiceSelect#ServiceSelect": ServiceSelect_8fc27eb2dc18b99abedc1390f32fb959,
   "@/collections/NgsiEntities/ui/ServicePathSelect#ServicePathSelect": ServicePathSelect_78c019d54c02497f78ba81a12e1f7416,
+  "@/collections/NgsiEntities/ui/AttributesField#AttributesField": AttributesField_e5d15e929e96889998d25357a7f41e6d,
   "@/collections/NgsiEntities/ui/EntityInteraction#EntityInteraction": EntityInteraction_8c72cf0d8f435ab809887d1edf487c00,
   "@payloadcms/plugin-search/client#LinkToDoc": LinkToDoc_aead06e4cbf6b2620c5c51c9ab283634,
   "@payloadcms/plugin-search/client#ReindexButton": ReindexButton_aead06e4cbf6b2620c5c51c9ab283634,

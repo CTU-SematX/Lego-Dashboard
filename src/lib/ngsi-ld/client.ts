@@ -44,20 +44,27 @@ function toNgsiResponse<T>(response: AxiosResponse<T>): NgsiResponse<T> {
 }
 
 /**
- * Create a base axios client with common headers (Fiware-Service, Fiware-ServicePath, auth)
- * Does NOT set Content-Type or Accept - those are set per-request based on operation
+ * Create a base axios client with common headers for multi-tenancy.
+ *
+ * Multi-tenancy headers (Orion-LD supports both):
+ * - Fiware-Service: NGSIv2 style (backward compatible)
+ * - NGSILD-Tenant: NGSI-LD 1.6+ style
+ *
+ * This project uses Fiware-Service for consistency with existing code.
+ *
+ * Does NOT set Content-Type or Accept - those are set per-request based on operation.
  */
 export function createNgsiClient(config: NgsiClientConfig): AxiosInstance {
   const { brokerUrl, service, servicePath, authToken } = config
 
   const headers: Record<string, string> = {}
 
-  // Only add Fiware-Service if it's a non-empty string
+  // Fiware-Service header for multi-tenancy (Orion-LD also accepts NGSILD-Tenant)
   if (service && service.trim()) {
     headers['Fiware-Service'] = service.trim()
   }
 
-  // Only add Fiware-ServicePath if it's a non-empty string
+  // Fiware-ServicePath for hierarchical scopes (e.g., /city/sensors)
   if (servicePath && servicePath.trim()) {
     headers['Fiware-ServicePath'] = servicePath.trim()
   }
@@ -76,6 +83,12 @@ export function createNgsiClient(config: NgsiClientConfig): AxiosInstance {
 /**
  * NGSI-LD Entity operations following the spec:
  * https://ngsi-ld-tutorials.readthedocs.io/en/latest/ngsi-ld-operations.html
+ *
+ * Two ways to pass @context:
+ * 1. Link header + Content-Type: application/json (recommended for most operations)
+ * 2. Embedded @context in body + Content-Type: application/ld+json (alternative)
+ *
+ * This class uses method 1 (Link header) for consistency and simplicity.
  */
 export class NgsiLdOperations {
   private client: AxiosInstance
@@ -88,7 +101,10 @@ export class NgsiLdOperations {
 
   /**
    * CREATE entity - POST /ngsi-ld/v1/entities
-   * Uses Content-Type: application/json + Link header (per tutorial examples)
+   *
+   * Uses Link header method:
+   * - Content-Type: application/json
+   * - Link: <contextUrl>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
    */
   async createEntity(entity: {
     id: string
@@ -106,8 +122,12 @@ export class NgsiLdOperations {
 
   /**
    * READ entity - GET /ngsi-ld/v1/entities/{entityId}
-   * Uses Accept: application/json + Link header for compacted response
-   * Or Accept: application/ld+json (NO Link header) for embedded context
+   *
+   * Two modes:
+   * 1. Compacted (default): Accept: application/json + Link header
+   *    - Response is pure JSON without @context
+   * 2. Embedded: Accept: application/ld+json (NO Link header)
+   *    - Response includes @context in body
    */
   async getEntity(
     entityId: string,

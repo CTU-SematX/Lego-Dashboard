@@ -21,9 +21,13 @@
 
 Lego-Dashboard is a **modern alternative to WireCloud** (FIWARE), built as a low-code platform on **PayloadCMS** and **Next.js 16**. It provides a flexible, customizable dashboard solution for smart city applications that integrate with **NGSI-LD Context Brokers**.
 
-<!-- TODO: Add screenshots/demo GIF here
-![Dashboard Preview](docs/images/dashboard-preview.png)
--->
+**Video demo (vietnamese):**
+
+[![Video tutorial (vietnamese)](https://img.youtube.com/vi/tt72nSMVw00/0.jpg)](https://www.youtube.com/watch?v=tt72nSMVw00)
+
+**Short demo:**
+
+https://github.com/user-attachments/assets/dac75256-8f39-45bb-8046-58412cf65d4d
 
 ## ✨ Key Features
 

@@ -48,6 +48,7 @@ Lego-Dashboard là **giải pháp thay thế hiện đại cho WireCloud** (FIWA
 ### 🤖 Nội dung AI
 - **Tích hợp OpenRouter** — Tạo nội dung với LLaMA, GPT-4o, Claude, Gemini
 - **Trợ lý viết AI** — Tích hợp trong admin panel
+- **MCP Server** - tích hợp MCP server plugin trực tiếp trong dashboard.
 
 > 📖 Để xem tài liệu chi tiết, truy cập [Lego-Doc](https://ctu-sematx.github.io/Lego-Doc/)
 

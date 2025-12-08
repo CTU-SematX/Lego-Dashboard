@@ -48,6 +48,7 @@ Lego-Dashboard is a **modern alternative to WireCloud** (FIWARE), built as a low
 ### 🤖 AI-Powered Content
 - **OpenRouter Integration** — Generate content with LLaMA, GPT-4o, Claude, Gemini
 - **AI Writing Assistant** — Integrated in the admin panel
+- **MCP Server** - Intergated MCP server plugin.
 
 > 📖 For detailed documentation, visit [Lego-Doc](https://ctu-sematx.github.io/Lego-Doc/)
 

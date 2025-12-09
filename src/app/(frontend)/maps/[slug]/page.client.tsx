@@ -1,10 +1,10 @@
 'use client'
 import { useHeaderTheme } from '@/providers/HeaderTheme'
-import React, { useEffect } from 'react'
+import React, { useEffect, useMemo } from 'react'
 
 import type { Map } from '@/payload-types'
 
-import { MapView } from '@/components/MapView'
+import { MapView, type MapLayerData, type MapSettings } from '@/components/MapView'
 
 interface MapPageClientProps {
   map: Map
@@ -17,9 +17,106 @@ const PageClient: React.FC<MapPageClientProps> = ({ map }) => {
     setHeaderTheme('dark')
   }, [setHeaderTheme])
 
+  // Transform map layers to MapLayerData format
+  const layers = useMemo((): MapLayerData[] => {
+    if (!map.layers || !Array.isArray(map.layers)) return []
+
+    return map.layers
+      .filter((layer) => layer.enabled !== false)
+      .map((layer) => {
+        // Extract data model info
+        const dataModel = typeof layer.dataModel === 'object' ? layer.dataModel : null
+        const source = typeof layer.source === 'object' ? layer.source : null
+
+        // Extract entity IDs if specific entities are selected
+        const entityIds = layer.entities
+          ?.map((e) => (typeof e === 'object' ? e.entityId : null))
+          .filter((id): id is string => id !== null)
+
+        // Extract entity data if specific entities are selected
+        const entityData = layer.entities
+          ?.map((e) => {
+            if (typeof e === 'object' && e.attributes) {
+              // Convert PayloadCMS entity to NgsiEntity format
+              return {
+                id: e.entityId,
+                type: e.type,
+                ...e.attributes,
+              }
+            }
+            return null
+          })
+          .filter((entity): entity is any => entity !== null)
+
+        // Get broker URL (prefer proxy if available)
+        const brokerUrl = source?.proxyUrl || source?.brokerUrl || ''
+
+        // Get entity type from data model
+        const entityType = dataModel?.model || ''
+
+        // Get context URL from data model
+        const contextUrl = dataModel?.contextUrl || undefined
+
+        // Extract tenant from entities if specific entities are selected
+        // Otherwise use first tenant from source
+        let tenant: string | undefined = undefined
+        let servicePath: string | undefined = undefined
+
+        if (layer.entities && layer.entities.length > 0) {
+          // Use tenant from first selected entity
+          const firstEntity = layer.entities[0]
+          if (typeof firstEntity === 'object') {
+            tenant = firstEntity.service || undefined
+            servicePath = firstEntity.servicePath || undefined
+          }
+        } else if (source) {
+          // Use first tenant from source
+          tenant = source.serviceHeader?.[0]?.value || undefined
+          servicePath = source.servicePath?.[0]?.value || undefined
+        }
+
+        return {
+          id: layer.id || `layer-${Math.random().toString(36).substr(2, 9)}`,
+          name: layer.name,
+          brokerUrl,
+          entityType,
+          entityIds: entityIds && entityIds.length > 0 ? entityIds : undefined,
+          entityData: entityData && entityData.length > 0 ? entityData : undefined,
+          tenant,
+          servicePath,
+          contextUrl,
+          locationAttribute: layer.locationAttribute || null,
+          markerStyle: {
+            color: layer.markerStyle?.color,
+            size: layer.markerStyle?.size,
+            icon: layer.markerStyle?.icon,
+          },
+          popupTemplate: layer.popupTemplate,
+          refreshInterval: layer.refreshInterval || 60,
+          enabled: layer.enabled !== false,
+        }
+      })
+      .filter((layer) => layer.brokerUrl && layer.entityType)
+  }, [map.layers])
+
+  // Extract map settings
+  const mapSettings = useMemo((): MapSettings => {
+    return {
+      centerLng: map.mapSettings?.centerLng,
+      centerLat: map.mapSettings?.centerLat,
+      zoom: map.mapSettings?.zoom,
+      mapStyle: map.mapSettings?.mapStyle,
+    }
+  }, [map.mapSettings])
+
   return (
     <div className="fixed inset-0 top-[64px]">
-      <MapView title={map.title} className="w-full h-full" />
+      <MapView
+        title={map.title}
+        className="w-full h-full"
+        layers={layers}
+        mapSettings={mapSettings}
+      />
     </div>
   )
 }

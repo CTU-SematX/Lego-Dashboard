@@ -78,6 +78,7 @@ const queryMapBySlug = cache(async ({ slug }: { slug: string }): Promise<Map | n
     collection: 'maps',
     draft,
     limit: 1,
+    depth: 3, // Populate layers with dataModel, source, and entities relationships
     overrideAccess: draft,
     pagination: false,
     where: {

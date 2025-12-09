@@ -1,17 +1,20 @@
 'use client'
 import { useHeaderTheme } from '@/providers/HeaderTheme'
-import React, { useEffect, useMemo } from 'react'
+import React, { useEffect, useMemo, useState, useCallback } from 'react'
 
 import type { Map } from '@/payload-types'
 
 import { MapView, type MapLayerData, type MapSettings } from '@/components/MapView'
+import { DashboardLayout, type MapItem, type LayerCount } from '@/components/Dashboard'
 
 interface MapPageClientProps {
   map: Map
+  allMaps: MapItem[]
 }
 
-const PageClient: React.FC<MapPageClientProps> = ({ map }) => {
+const PageClient: React.FC<MapPageClientProps> = ({ map, allMaps }) => {
   const { setHeaderTheme } = useHeaderTheme()
+  const [layerCounts, setLayerCounts] = useState<LayerCount[]>([])
 
   useEffect(() => {
     setHeaderTheme('dark')
@@ -38,10 +41,11 @@ const PageClient: React.FC<MapPageClientProps> = ({ map }) => {
           ?.map((e) => {
             if (typeof e === 'object' && e.attributes) {
               // Convert PayloadCMS entity to NgsiEntity format
+              const attrs = typeof e.attributes === 'object' ? e.attributes : {}
               return {
                 id: e.entityId,
                 type: e.type,
-                ...e.attributes,
+                ...attrs,
               }
             }
             return null
@@ -85,7 +89,7 @@ const PageClient: React.FC<MapPageClientProps> = ({ map }) => {
           tenant,
           servicePath,
           contextUrl,
-          locationAttribute: layer.locationAttribute || null,
+          locationAttribute: layer.locationAttribute || undefined,
           markerStyle: {
             color: layer.markerStyle?.color,
             size: layer.markerStyle?.size,
@@ -99,6 +103,20 @@ const PageClient: React.FC<MapPageClientProps> = ({ map }) => {
       .filter((layer) => layer.brokerUrl && layer.entityType)
   }, [map.layers])
 
+  // Handle layer data loaded for entity counts
+  const handleLayerDataLoaded = useCallback(
+    (counts: Record<string, { name: string; count: number; color?: string }>) => {
+      const layerCountsArray: LayerCount[] = Object.entries(counts).map(([id, data]) => ({
+        id,
+        name: data.name,
+        count: data.count,
+        color: data.color,
+      }))
+      setLayerCounts(layerCountsArray)
+    },
+    [],
+  )
+
   // Extract map settings
   const mapSettings = useMemo((): MapSettings => {
     return {
@@ -111,12 +129,14 @@ const PageClient: React.FC<MapPageClientProps> = ({ map }) => {
 
   return (
     <div className="fixed inset-0 top-[64px]">
-      <MapView
-        title={map.title}
-        className="w-full h-full"
-        layers={layers}
-        mapSettings={mapSettings}
-      />
+      <DashboardLayout maps={allMaps} layerCounts={layerCounts}>
+        <MapView
+          className="w-full h-full"
+          layers={layers}
+          mapSettings={mapSettings}
+          onLayerDataLoaded={handleLayerDataLoaded}
+        />
+      </DashboardLayout>
     </div>
   )
 }

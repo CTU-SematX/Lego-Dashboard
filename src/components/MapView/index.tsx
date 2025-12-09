@@ -44,6 +44,9 @@ interface MapViewProps {
   className?: string
   layers?: MapLayerData[]
   mapSettings?: MapSettings
+  onLayerDataLoaded?: (
+    counts: Record<string, { name: string; count: number; color?: string }>,
+  ) => void
 }
 
 /**
@@ -89,12 +92,19 @@ const NgsiLayerFetcher: React.FC<{
   return null
 }
 
-export const MapView: React.FC<MapViewProps> = ({ title, className, layers, mapSettings }) => {
+export const MapView: React.FC<MapViewProps> = ({
+  title,
+  className,
+  layers,
+  mapSettings,
+  onLayerDataLoaded,
+}) => {
   const mapContainer = useRef<HTMLDivElement>(null)
   const map = useRef<mapboxgl.Map | null>(null)
   const layerManager = useRef<MapboxLayerManager | null>(null)
   const [mapLoaded, setMapLoaded] = useState(false)
   const [layerErrors, setLayerErrors] = useState<Record<string, string>>({})
+  const layerDataRef = useRef<Record<string, { name: string; count: number; color?: string }>>({})
 
   // Initialize map
   useEffect(() => {
@@ -172,6 +182,16 @@ export const MapView: React.FC<MapViewProps> = ({ title, className, layers, mapS
 
       layerManager.current.addOrUpdateLayer(config)
 
+      // Update layer counts and notify parent
+      layerDataRef.current[layerId] = {
+        name: layer.name,
+        count: entities.length,
+        color: layer.markerStyle?.color || undefined,
+      }
+      if (onLayerDataLoaded) {
+        onLayerDataLoaded({ ...layerDataRef.current })
+      }
+
       // Clear error for this layer
       setLayerErrors((prev) => {
         const next = { ...prev }
@@ -179,7 +199,7 @@ export const MapView: React.FC<MapViewProps> = ({ title, className, layers, mapS
         return next
       })
     },
-    [mapLoaded, layers],
+    [mapLoaded, layers, onLayerDataLoaded],
   )
 
   // Handle layer error

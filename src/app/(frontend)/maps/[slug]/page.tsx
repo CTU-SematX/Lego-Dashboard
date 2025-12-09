@@ -48,6 +48,9 @@ export default async function MapPage({ params: paramsPromise }: Args) {
 
   if (!map) return <PayloadRedirects url={url} />
 
+  // Fetch all maps for sidebar navigation
+  const allMaps = await queryAllMaps()
+
   return (
     <>
       {/* Allows redirects for valid pages too */}
@@ -55,7 +58,7 @@ export default async function MapPage({ params: paramsPromise }: Args) {
 
       {draft && <LivePreviewListener />}
 
-      <PageClient map={map} />
+      <PageClient map={map} allMaps={allMaps} />
     </>
   )
 }
@@ -89,4 +92,27 @@ const queryMapBySlug = cache(async ({ slug }: { slug: string }): Promise<Map | n
   })
 
   return result.docs?.[0] || null
+})
+
+const queryAllMaps = cache(async (): Promise<{ title: string; slug: string }[]> => {
+  const { isEnabled: draft } = await draftMode()
+
+  const payload = await getPayload({ config: configPromise })
+
+  const result = await payload.find({
+    collection: 'maps',
+    draft,
+    limit: 100,
+    overrideAccess: draft,
+    pagination: false,
+    select: {
+      title: true,
+      slug: true,
+    },
+  })
+
+  return result.docs.map((doc) => ({
+    title: String(doc.title || ''),
+    slug: String(doc.slug || ''),
+  }))
 })

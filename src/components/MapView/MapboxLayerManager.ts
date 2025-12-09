@@ -15,6 +15,23 @@ export interface NgsiLayerConfig {
   popupTemplate?: string | null
 }
 
+// Icon SVG paths for custom markers
+const ICON_SVGS: Record<string, string> = {
+  pin: `<svg width="24" height="32" viewBox="0 0 24 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 0C5.373 0 0 5.373 0 12c0 9 12 20 12 20s12-11 12-20c0-6.627-5.373-12-12-12z" fill="{{color}}"/>
+    <circle cx="12" cy="12" r="5" fill="white"/>
+  </svg>`,
+  square: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="2" y="2" width="20" height="20" rx="3" fill="{{color}}" stroke="white" stroke-width="2"/>
+  </svg>`,
+  triangle: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 2L22 20H2L12 2z" fill="{{color}}" stroke="white" stroke-width="2"/>
+  </svg>`,
+  star: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 2l2.4 7.2H22l-6 4.8 2.4 7.2L12 16.8l-6.4 4.4 2.4-7.2-6-4.8h7.6L12 2z" fill="{{color}}" stroke="white" stroke-width="1"/>
+  </svg>`,
+}
+
 /**
  * Manages NGSI-LD data layers on a Mapbox map
  */
@@ -22,6 +39,7 @@ export class MapboxLayerManager {
   private map: mapboxgl.Map
   private layers: Map<string, NgsiLayerConfig> = new Map()
   private popups: Map<string, mapboxgl.Popup> = new Map()
+  private loadedIcons: Set<string> = new Set()
 
   constructor(map: mapboxgl.Map) {
     this.map = map
@@ -33,7 +51,6 @@ export class MapboxLayerManager {
   addOrUpdateLayer(config: NgsiLayerConfig): void {
     const sourceId = `ngsi-source-${config.id}`
     const layerId = `ngsi-layer-${config.id}`
-    const symbolLayerId = `ngsi-symbol-${config.id}`
 
     // Store config for later reference
     this.layers.set(config.id, config)
@@ -54,19 +71,26 @@ export class MapboxLayerManager {
         clusterRadius: 50,
       })
 
-      // Add circle layer for points
-      this.map.addLayer({
-        id: layerId,
-        type: 'circle',
-        source: sourceId,
-        filter: ['!', ['has', 'point_count']], // Exclude clusters
-        paint: {
-          'circle-radius': config.style.size || 8,
-          'circle-color': config.style.color || '#3b82f6',
-          'circle-stroke-width': 2,
-          'circle-stroke-color': '#ffffff',
-        },
-      })
+      const useIcon = config.style.icon && config.style.icon !== 'circle'
+
+      if (useIcon) {
+        // Add symbol layer for custom icons
+        this.addIconLayer(sourceId, layerId, config)
+      } else {
+        // Add circle layer for points (default)
+        this.map.addLayer({
+          id: layerId,
+          type: 'circle',
+          source: sourceId,
+          filter: ['!', ['has', 'point_count']], // Exclude clusters
+          paint: {
+            'circle-radius': config.style.size || 8,
+            'circle-color': config.style.color || '#3b82f6',
+            'circle-stroke-width': 2,
+            'circle-stroke-color': '#ffffff',
+          },
+        })
+      }
 
       // Add cluster circle layer
       this.map.addLayer({
@@ -125,17 +149,137 @@ export class MapboxLayerManager {
         },
       })
 
-      // Setup click handlers
-      this.setupClickHandlers(layerId, config)
-      this.setupClickHandlers(`${layerId}-clusters`, config, true)
+      // Setup event handlers
+      this.setupEventHandlers(layerId, config)
+      this.setupClusterClickHandler(`${layerId}-clusters`, config)
     }
   }
 
   /**
-   * Setup click handlers for popups and cluster zoom
+   * Add icon-based symbol layer
    */
-  private setupClickHandlers(layerId: string, config: NgsiLayerConfig, isCluster = false): void {
-    // Cursor change on hover
+  private addIconLayer(sourceId: string, layerId: string, config: NgsiLayerConfig): void {
+    const iconType = config.style.icon || 'pin'
+    const color = config.style.color || '#3b82f6'
+    const iconId = `ngsi-icon-${iconType}-${color.replace('#', '')}`
+
+    // Load icon if not already loaded
+    if (!this.loadedIcons.has(iconId)) {
+      this.loadIcon(iconId, iconType, color)
+    }
+
+    // Add symbol layer
+    this.map.addLayer({
+      id: layerId,
+      type: 'symbol',
+      source: sourceId,
+      filter: ['!', ['has', 'point_count']],
+      layout: {
+        'icon-image': iconId,
+        'icon-size': (config.style.size || 8) / 16,
+        'icon-allow-overlap': true,
+        'icon-anchor': iconType === 'pin' ? 'bottom' : 'center',
+      },
+    })
+  }
+
+  /**
+   * Load custom icon into map
+   */
+  private loadIcon(iconId: string, iconType: string, color: string): void {
+    const svgTemplate = ICON_SVGS[iconType]
+    if (!svgTemplate) return
+
+    const svg = svgTemplate.replace(/\{\{color\}\}/g, color)
+    const blob = new Blob([svg], { type: 'image/svg+xml' })
+    const url = URL.createObjectURL(blob)
+
+    const img = new Image()
+    img.onload = () => {
+      if (!this.map.hasImage(iconId)) {
+        this.map.addImage(iconId, img)
+        this.loadedIcons.add(iconId)
+      }
+      URL.revokeObjectURL(url)
+    }
+    img.src = url
+  }
+
+  /**
+   * Setup hover and click handlers for popups
+   */
+  private setupEventHandlers(layerId: string, config: NgsiLayerConfig): void {
+    let hoverPopup: mapboxgl.Popup | null = null
+
+    // Cursor change and hover popup on mouseenter
+    this.map.on('mouseenter', layerId, (e) => {
+      this.map.getCanvas().style.cursor = 'pointer'
+
+      if (!e.features || e.features.length === 0) return
+
+      const feature = e.features[0]
+      const geometry = feature.geometry as GeoJSON.Point
+      if (geometry.type !== 'Point') return
+
+      const coordinates = geometry.coordinates.slice() as [number, number]
+
+      // Ensure the popup appears at the correct location when map wraps
+      while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+        coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360
+      }
+
+      // Create hover popup
+      const content = this.renderHoverPopupContent(config, feature.properties)
+      hoverPopup = new mapboxgl.Popup({
+        closeButton: false,
+        closeOnClick: false,
+        className: 'ngsi-hover-popup',
+        offset: 15,
+      })
+        .setLngLat(coordinates)
+        .setHTML(content)
+        .addTo(this.map)
+    })
+
+    // Remove hover popup on mouseleave
+    this.map.on('mouseleave', layerId, () => {
+      this.map.getCanvas().style.cursor = ''
+      if (hoverPopup) {
+        hoverPopup.remove()
+        hoverPopup = null
+      }
+    })
+
+    // Click handler for detailed popup
+    this.map.on('click', layerId, (e) => {
+      if (!e.features || e.features.length === 0) return
+
+      // Remove hover popup
+      if (hoverPopup) {
+        hoverPopup.remove()
+        hoverPopup = null
+      }
+
+      const feature = e.features[0]
+      const geometry = feature.geometry as GeoJSON.Point
+      if (geometry.type !== 'Point') return
+
+      const coordinates = geometry.coordinates.slice() as [number, number]
+
+      // Ensure the popup appears at the correct location when map wraps
+      while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+        coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360
+      }
+
+      // Show detailed popup
+      this.showPopup(config, feature.properties, coordinates)
+    })
+  }
+
+  /**
+   * Setup click handler for cluster zoom
+   */
+  private setupClusterClickHandler(layerId: string, config: NgsiLayerConfig): void {
     this.map.on('mouseenter', layerId, () => {
       this.map.getCanvas().style.cursor = 'pointer'
     })
@@ -144,7 +288,6 @@ export class MapboxLayerManager {
       this.map.getCanvas().style.cursor = ''
     })
 
-    // Click handler
     this.map.on('click', layerId, (e) => {
       if (!e.features || e.features.length === 0) return
 
@@ -154,27 +297,71 @@ export class MapboxLayerManager {
         number,
       ]
 
-      // Ensure the popup appears at the correct location when map wraps
-      while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
-        coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360
-      }
-
-      if (isCluster) {
-        // Zoom into cluster
-        const clusterId = feature.properties?.cluster_id
-        const source = this.map.getSource(`ngsi-source-${config.id}`) as mapboxgl.GeoJSONSource
-        source.getClusterExpansionZoom(clusterId, (err, zoom) => {
-          if (err) return
-          this.map.easeTo({
-            center: coordinates,
-            zoom: zoom ?? 14,
-          })
+      // Zoom into cluster
+      const clusterId = feature.properties?.cluster_id
+      const source = this.map.getSource(`ngsi-source-${config.id}`) as mapboxgl.GeoJSONSource
+      source.getClusterExpansionZoom(clusterId, (err, zoom) => {
+        if (err) return
+        this.map.easeTo({
+          center: coordinates,
+          zoom: zoom ?? 14,
         })
-      } else {
-        // Show popup
-        this.showPopup(config, feature.properties, coordinates)
-      }
+      })
     })
+  }
+
+  /**
+   * Render hover popup content (simplified)
+   */
+  private renderHoverPopupContent(
+    config: NgsiLayerConfig,
+    properties: Record<string, unknown> | null,
+  ): string {
+    if (!properties) {
+      return '<div class="p-2 text-sm">No data</div>'
+    }
+
+    const name = properties.name || properties.id || config.name
+    const type = properties.type || ''
+    const status = properties.status || properties.state || ''
+
+    let html = `<div class="ngsi-hover-popup-content">`
+    html += `<div class="font-semibold text-blue-600">${name}</div>`
+    if (type) {
+      html += `<div class="text-xs text-gray-500">${type}</div>`
+    }
+    if (status) {
+      const statusColor = this.getStatusColor(String(status))
+      html += `<div class="flex items-center gap-1 mt-1">`
+      html += `<span class="w-2 h-2 rounded-full" style="background-color: ${statusColor}"></span>`
+      html += `<span class="text-xs uppercase">${status}</span>`
+      html += `</div>`
+    }
+    html += `<div class="text-xs text-gray-400 mt-1">Click for details</div>`
+    html += `</div>`
+    return html
+  }
+
+  /**
+   * Get status color based on status value
+   */
+  private getStatusColor(status: string): string {
+    const normalizedStatus = status.toLowerCase()
+    const statusColors: Record<string, string> = {
+      online: '#22c55e',
+      active: '#22c55e',
+      available: '#22c55e',
+      ok: '#22c55e',
+      dispatched: '#f97316',
+      busy: '#f97316',
+      warning: '#f97316',
+      pending: '#f97316',
+      offline: '#ef4444',
+      error: '#ef4444',
+      unavailable: '#ef4444',
+      inactive: '#6b7280',
+    }
+    return statusColors[normalizedStatus] || '#6b7280'
   }
 
   /**
@@ -221,17 +408,41 @@ export class MapboxLayerManager {
       return this.parseTemplate(config.popupTemplate, properties)
     }
 
-    // Default format
-    let html = `<div class="ngsi-popup">`
-    html += `<h3 class="font-semibold text-sm mb-2">${properties.type || config.name}</h3>`
-    html += `<div class="text-xs space-y-1">`
+    // Default format - improved styling
+    const name = properties.name || properties.id || 'Unknown'
+    const type = properties.type || config.name
+    const status = properties.status || properties.state || ''
+
+    let html = `<div class="ngsi-popup" style="min-width: 200px;">`
+
+    // Header with name and status
+    html += `<div style="border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; margin-bottom: 8px;">`
+    html += `<div style="color: #2563eb; font-weight: 600; font-size: 14px;">${name}</div>`
+    if (status) {
+      const statusColor = this.getStatusColor(String(status))
+      html += `<div style="display: flex; align-items: center; gap: 6px; margin-top: 4px;">`
+      html += `<span style="width: 8px; height: 8px; border-radius: 50%; background-color: ${statusColor};"></span>`
+      html += `<span style="font-size: 12px; text-transform: uppercase; color: #6b7280;">${status}</span>`
+      html += `</div>`
+    }
+    html += `</div>`
+
+    // Type info
+    html += `<div style="font-size: 11px; color: #9ca3af; margin-bottom: 8px;">${type}</div>`
+
+    // Properties
+    html += `<div style="font-size: 12px; display: flex; flex-direction: column; gap: 4px;">`
 
     for (const [key, value] of Object.entries(properties)) {
-      if (key === 'id' || key === 'type') continue
+      if (key === 'id' || key === 'type' || key === 'name' || key === 'status' || key === 'state')
+        continue
 
       const displayValue = this.formatValue(value)
       const displayKey = this.formatKey(key)
-      html += `<div><span class="font-medium">${displayKey}:</span> ${displayValue}</div>`
+      html += `<div style="display: flex; justify-content: space-between;">`
+      html += `<span style="color: #6b7280;">${displayKey}</span>`
+      html += `<span style="font-weight: 500; color: #374151;">${displayValue}</span>`
+      html += `</div>`
     }
 
     html += `</div></div>`

@@ -81,8 +81,8 @@ const queryMapBySlug = cache(async ({ slug }: { slug: string }): Promise<Map | n
     collection: 'maps',
     draft,
     limit: 1,
-    depth: 3, // Populate layers with dataModel, source, and entities relationships
-    overrideAccess: draft,
+    depth: 5,
+    overrideAccess: true, // Override access control to ensure relationships are populated
     pagination: false,
     where: {
       slug: {
@@ -90,6 +90,31 @@ const queryMapBySlug = cache(async ({ slug }: { slug: string }): Promise<Map | n
       },
     },
   })
+  
+  // Manually populate source and dataModel relationships if they're still IDs
+  if (result.docs?.[0]?.layers) {
+    for (const layer of result.docs[0].layers) {
+      // Populate source if it's an ID string
+      if (typeof layer.source === 'string') {
+        const sourceDoc = await payload.findByID({
+          collection: 'ngsi-sources',
+          id: layer.source,
+          overrideAccess: true,
+        })
+        layer.source = sourceDoc as any
+      }
+      
+      // Populate dataModel if it's an ID string
+      if (typeof layer.dataModel === 'string') {
+        const dataModelDoc = await payload.findByID({
+          collection: 'ngsi-data-models',
+          id: layer.dataModel,
+          overrideAccess: true,
+        })
+        layer.dataModel = dataModelDoc as any
+      }
+    }
+  }
 
   return result.docs?.[0] || null
 })

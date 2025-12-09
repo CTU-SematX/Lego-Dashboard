@@ -90,7 +90,7 @@ const queryMapBySlug = cache(async ({ slug }: { slug: string }): Promise<Map | n
       },
     },
   })
-  
+
   // Manually populate source and dataModel relationships if they're still IDs
   if (result.docs?.[0]?.layers) {
     for (const layer of result.docs[0].layers) {
@@ -103,7 +103,7 @@ const queryMapBySlug = cache(async ({ slug }: { slug: string }): Promise<Map | n
         })
         layer.source = sourceDoc as any
       }
-      
+
       // Populate dataModel if it's an ID string
       if (typeof layer.dataModel === 'string') {
         const dataModelDoc = await payload.findByID({

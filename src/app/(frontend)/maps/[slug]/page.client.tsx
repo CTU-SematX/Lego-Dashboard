@@ -54,7 +54,7 @@ const PageClient: React.FC<MapPageClientProps> = ({ map, allMaps }) => {
 
         // Get broker URL (use direct broker URL)
         const brokerUrl = source?.brokerUrl || ''
-        
+
         // DEBUG: Log broker URL
         console.log('[DEBUG] Layer:', layer.name, {
           sourceName: source?.name,

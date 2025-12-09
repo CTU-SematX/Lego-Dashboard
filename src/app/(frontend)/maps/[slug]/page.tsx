@@ -96,22 +96,38 @@ const queryMapBySlug = cache(async ({ slug }: { slug: string }): Promise<Map | n
     for (const layer of result.docs[0].layers) {
       // Populate source if it's an ID string
       if (typeof layer.source === 'string') {
-        const sourceDoc = await payload.findByID({
-          collection: 'ngsi-sources',
-          id: layer.source,
-          overrideAccess: true,
-        })
-        layer.source = sourceDoc as any
+        try {
+          const sourceDoc = await payload.findByID({
+            collection: 'ngsi-sources',
+            id: layer.source,
+            overrideAccess: true,
+          })
+          layer.source = sourceDoc as any
+        } catch (error) {
+          // Source document not found, log and keep the ID as is
+          console.warn(
+            `[Map] Failed to populate source for layer "${layer.name}": ${layer.source}`,
+            error,
+          )
+        }
       }
 
       // Populate dataModel if it's an ID string
       if (typeof layer.dataModel === 'string') {
-        const dataModelDoc = await payload.findByID({
-          collection: 'ngsi-data-models',
-          id: layer.dataModel,
-          overrideAccess: true,
-        })
-        layer.dataModel = dataModelDoc as any
+        try {
+          const dataModelDoc = await payload.findByID({
+            collection: 'ngsi-data-models',
+            id: layer.dataModel,
+            overrideAccess: true,
+          })
+          layer.dataModel = dataModelDoc as any
+        } catch (error) {
+          // DataModel document not found, log and keep the ID as is
+          console.warn(
+            `[Map] Failed to populate dataModel for layer "${layer.name}": ${layer.dataModel}`,
+            error,
+          )
+        }
       }
     }
   }

@@ -27,9 +27,21 @@ const PageClient: React.FC<MapPageClientProps> = ({ map, allMaps }) => {
     return map.layers
       .filter((layer) => layer.enabled !== false)
       .map((layer) => {
-        // Extract data model info
+        // Extract data model info - handle both populated object and unpopulated ID
         const dataModel = typeof layer.dataModel === 'object' ? layer.dataModel : null
         const source = typeof layer.source === 'object' ? layer.source : null
+
+        // Log warning if relationships are not populated
+        if (typeof layer.dataModel === 'string') {
+          console.warn(
+            `[MapLayer] dataModel not populated for layer "${layer.name}", ID: ${layer.dataModel}`,
+          )
+        }
+        if (typeof layer.source === 'string') {
+          console.warn(
+            `[MapLayer] source not populated for layer "${layer.name}", ID: ${layer.source}`,
+          )
+        }
 
         // Extract entity IDs if specific entities are selected
         const entityIds = layer.entities

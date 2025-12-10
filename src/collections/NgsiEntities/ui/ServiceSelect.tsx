@@ -79,7 +79,10 @@ export const ServiceSelect: TextFieldClientComponent = ({ path, field }) => {
         name="service"
         options={options}
         value={value}
-        onChange={(option) => setValue(option?.value || '')}
+        onChange={(option) => {
+          const selected = Array.isArray(option) ? option[0] : option
+          setValue((selected as { value: string })?.value || '')
+        }}
         isClearable
       />
     </div>

@@ -4,7 +4,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 
 import type { Map } from '../../../payload-types'
 
-export const revalidateMap: CollectionAfterChangeHook<Map> = ({
+export const revalidateMap: CollectionAfterChangeHook<Map> = async ({
   doc,
   previousDoc,
   req: { payload, context },
@@ -15,8 +15,8 @@ export const revalidateMap: CollectionAfterChangeHook<Map> = ({
 
       payload.logger.info(`Revalidating map at path: ${path}`)
 
-      revalidatePath(path)
-      revalidateTag('maps-sitemap')
+      await revalidatePath(path)
+      await revalidateTag('maps-sitemap', 'default')
     }
 
     // If the map was previously published, we need to revalidate the old path
@@ -25,19 +25,19 @@ export const revalidateMap: CollectionAfterChangeHook<Map> = ({
 
       payload.logger.info(`Revalidating old map at path: ${oldPath}`)
 
-      revalidatePath(oldPath)
-      revalidateTag('maps-sitemap')
+      await revalidatePath(oldPath)
+      await revalidateTag('maps-sitemap', 'default')
     }
   }
   return doc
 }
 
-export const revalidateDelete: CollectionAfterDeleteHook<Map> = ({ doc, req: { context } }) => {
+export const revalidateDelete: CollectionAfterDeleteHook<Map> = async ({ doc, req: { context } }) => {
   if (!context.disableRevalidate) {
     const path = `/maps/${doc?.slug}`
 
-    revalidatePath(path)
-    revalidateTag('maps-sitemap')
+    await revalidatePath(path)
+    await revalidateTag('maps-sitemap', 'default')
   }
 
   return doc

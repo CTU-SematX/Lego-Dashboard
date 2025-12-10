@@ -45,7 +45,7 @@ export const NgsiDataModels: CollectionConfig = {
       admin: {
         description: 'The entity type name (e.g., "Building", "Device")',
       },
-      validate: (value) => {
+      validate: (value: unknown) => {
         if (!value || typeof value !== 'string' || value.trim() === '') {
           return 'Model name is required'
         }

@@ -66,7 +66,10 @@ export const ServicePathSelect: TextFieldClientComponent = ({ path, field }) => 
         name="servicePath"
         options={options}
         value={value}
-        onChange={(option) => setValue(option?.value || '/')}
+        onChange={(option) => {
+          const selected = Array.isArray(option) ? option[0] : option
+          setValue((selected as { value: string })?.value || '/')
+        }}
         required
       />
     </div>

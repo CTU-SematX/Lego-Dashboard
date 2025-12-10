@@ -145,7 +145,7 @@ This starts:
 ## 🗺️ Roadmap
 
 - [x] **v0.3.0-alpha** — Complete NGSI-LD flow on dashboard
-- [ ] **v0.4.0-alpha** — UI rendering from NGSI entities *(current)*
+- [x] **v0.4.0-alpha** — UI rendering from NGSI entities *(current)*
 - [ ] **v0.5.0-alpha** — User permissions & roles (Data management, web design management)
 - [ ] **v0.6.0-beta** — Improve NGSI source connection (Proxy connection with authorization, API keys)
 - [ ] **v0.7.0-beta** — Map page integration (intergated with Mapbox)

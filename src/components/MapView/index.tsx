@@ -28,6 +28,10 @@ export interface MapLayerData {
     color?: string | null
     size?: number | null
     icon?: string | null
+    // Polygon/Line specific styling
+    fillOpacity?: number | null
+    strokeWidth?: number | null
+    strokeColor?: string | null
   }
   popupTemplate?: string | null
   refreshInterval?: number
@@ -214,6 +218,9 @@ export const MapView: React.FC<MapViewProps> = ({
           color: layer.markerStyle?.color,
           size: layer.markerStyle?.size,
           icon: layer.markerStyle?.icon as NgsiLayerConfig['style']['icon'],
+          fillOpacity: layer.markerStyle?.fillOpacity,
+          strokeWidth: layer.markerStyle?.strokeWidth,
+          strokeColor: layer.markerStyle?.strokeColor,
         },
         popupTemplate: layer.popupTemplate,
       }

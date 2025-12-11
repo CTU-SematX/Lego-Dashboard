@@ -1,10 +1,15 @@
 import mapboxgl from 'mapbox-gl'
 import type { GeoJsonFeatureCollection } from '@/lib/ngsi-ld/geoJsonHelpers'
+import { getGeometryCenter } from '@/lib/ngsi-ld/geoJsonHelpers'
 
 export interface MarkerStyle {
   color?: string | null
   size?: number | null
   icon?: 'circle' | 'square' | 'triangle' | 'star' | 'pin' | null
+  // Polygon/Line specific styling
+  fillOpacity?: number | null
+  strokeWidth?: number | null
+  strokeColor?: string | null
 }
 
 export interface NgsiLayerConfig {
@@ -51,7 +56,22 @@ export class MapboxLayerManager {
    * Generate a hash for layer style to detect changes
    */
   private getStyleHash(config: NgsiLayerConfig): string {
-    return `${config.style.icon || 'circle'}-${config.style.color || '#3b82f6'}-${config.style.size || 8}`
+    const s = config.style
+    return `${s.icon || 'circle'}-${s.color || '#3b82f6'}-${s.size || 8}-${s.fillOpacity ?? 0.3}-${s.strokeWidth ?? 2}-${s.strokeColor || s.color || '#3b82f6'}`
+  }
+
+  /**
+   * Check if FeatureCollection contains non-point geometries
+   */
+  private hasNonPointGeometries(data: GeoJsonFeatureCollection): boolean {
+    return data.features.some(f => f.geometry.type !== 'Point' && f.geometry.type !== 'MultiPoint')
+  }
+
+  /**
+   * Check if FeatureCollection contains point geometries
+   */
+  private hasPointGeometries(data: GeoJsonFeatureCollection): boolean {
+    return data.features.some(f => f.geometry.type === 'Point' || f.geometry.type === 'MultiPoint')
   }
 
   /**
@@ -83,96 +103,135 @@ export class MapboxLayerManager {
       // Update existing source data
       currentSource.setData(config.data as GeoJSON.FeatureCollection)
     } else {
+      // Determine geometry types present in data
+      const hasPoints = this.hasPointGeometries(config.data)
+      const hasNonPoints = this.hasNonPointGeometries(config.data)
+
+      // Only enable clustering for point-only data with many features
+      const shouldCluster = hasPoints && !hasNonPoints && config.data.features.length > 50
+
       // Add new source
       this.map.addSource(sourceId, {
         type: 'geojson',
         data: config.data as GeoJSON.FeatureCollection,
-        cluster: config.data.features.length > 50,
+        cluster: shouldCluster,
         clusterMaxZoom: 14,
         clusterRadius: 50,
       })
 
       const useIcon = config.style.icon && config.style.icon !== 'circle'
+      const color = config.style.color || '#3b82f6'
+      const fillOpacity = config.style.fillOpacity ?? 0.3
+      const strokeWidth = config.style.strokeWidth ?? 2
+      const strokeColor = config.style.strokeColor || color
 
-      if (useIcon) {
-        // Add symbol layer for custom icons
-        this.addIconLayer(sourceId, layerId, config)
-      } else {
-        // Add circle layer for points (default)
-        this.map.addLayer({
-          id: layerId,
-          type: 'circle',
-          source: sourceId,
-          filter: ['!', ['has', 'point_count']], // Exclude clusters
-          paint: {
-            'circle-radius': config.style.size || 8,
-            'circle-color': config.style.color || '#3b82f6',
-            'circle-stroke-width': 2,
-            'circle-stroke-color': '#ffffff',
-          },
-        })
+      // Add point layers only if we have point geometries
+      if (hasPoints) {
+        if (useIcon) {
+          // Add symbol layer for custom icons (points only)
+          this.addIconLayer(sourceId, layerId, config)
+        } else {
+          // Add circle layer for points (default)
+          this.map.addLayer({
+            id: layerId,
+            type: 'circle',
+            source: sourceId,
+            filter: [
+              'all',
+              ['!', ['has', 'point_count']],
+              ['any',
+                ['==', ['geometry-type'], 'Point'],
+                ['==', ['geometry-type'], 'MultiPoint']
+              ]
+            ],
+            paint: {
+              'circle-radius': config.style.size || 8,
+              'circle-color': color,
+              'circle-stroke-width': 2,
+              'circle-stroke-color': '#ffffff',
+            },
+          })
+        }
+
+        // Add cluster layers only if clustering is enabled
+        if (shouldCluster) {
+          // Add cluster circle layer
+          this.map.addLayer({
+            id: `${layerId}-clusters`,
+            type: 'circle',
+            source: sourceId,
+            filter: ['has', 'point_count'],
+            paint: {
+              'circle-color': color,
+              'circle-radius': ['step', ['get', 'point_count'], 20, 10, 30, 50, 40],
+              'circle-stroke-width': 3,
+              'circle-stroke-color': '#ffffff',
+            },
+          })
+
+          // Add cluster count labels
+          this.map.addLayer({
+            id: `${layerId}-cluster-count`,
+            type: 'symbol',
+            source: sourceId,
+            filter: ['has', 'point_count'],
+            layout: {
+              'text-field': '{point_count_abbreviated}',
+              'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+              'text-size': 12,
+            },
+            paint: {
+              'text-color': '#ffffff',
+            },
+          })
+
+          // Setup cluster click handler
+          this.setupClusterClickHandler(`${layerId}-clusters`, config)
+        }
+
+        // Setup event handlers for point layer
+        this.setupEventHandlers(layerId, config)
       }
 
-      // Add cluster circle layer
-      this.map.addLayer({
-        id: `${layerId}-clusters`,
-        type: 'circle',
-        source: sourceId,
-        filter: ['has', 'point_count'],
-        paint: {
-          'circle-color': config.style.color || '#3b82f6',
-          'circle-radius': ['step', ['get', 'point_count'], 20, 10, 30, 50, 40],
-          'circle-stroke-width': 3,
-          'circle-stroke-color': '#ffffff',
-        },
-      })
+      // Add polygon fill layer (supports Polygon and MultiPolygon)
+      if (hasNonPoints) {
+        this.map.addLayer({
+          id: `${layerId}-fill`,
+          type: 'fill',
+          source: sourceId,
+          filter: [
+            'any',
+            ['==', ['geometry-type'], 'Polygon'],
+            ['==', ['geometry-type'], 'MultiPolygon']
+          ],
+          paint: {
+            'fill-color': color,
+            'fill-opacity': fillOpacity,
+          },
+        })
 
-      // Add cluster count labels
-      this.map.addLayer({
-        id: `${layerId}-cluster-count`,
-        type: 'symbol',
-        source: sourceId,
-        filter: ['has', 'point_count'],
-        layout: {
-          'text-field': '{point_count_abbreviated}',
-          'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
-          'text-size': 12,
-        },
-        paint: {
-          'text-color': '#ffffff',
-        },
-      })
+        // Add line layer for LineString, MultiLineString, and polygon outlines
+        this.map.addLayer({
+          id: `${layerId}-line`,
+          type: 'line',
+          source: sourceId,
+          filter: [
+            'any',
+            ['==', ['geometry-type'], 'LineString'],
+            ['==', ['geometry-type'], 'MultiLineString'],
+            ['==', ['geometry-type'], 'Polygon'],
+            ['==', ['geometry-type'], 'MultiPolygon']
+          ],
+          paint: {
+            'line-color': strokeColor,
+            'line-width': strokeWidth,
+          },
+        })
 
-      // Add polygon/line layer if applicable
-      this.map.addLayer({
-        id: `${layerId}-fill`,
-        type: 'fill',
-        source: sourceId,
-        filter: ['==', ['geometry-type'], 'Polygon'],
-        paint: {
-          'fill-color': config.style.color || '#3b82f6',
-          'fill-opacity': 0.3,
-        },
-      })
-
-      this.map.addLayer({
-        id: `${layerId}-line`,
-        type: 'line',
-        source: sourceId,
-        filter: [
-          'any',
-          ['==', ['geometry-type'], 'LineString'],
-          ['==', ['geometry-type'], 'Polygon'],
-        ],
-        paint: {
-          'line-color': config.style.color || '#3b82f6',
-          'line-width': 2,
-        },
-      })
-
-      // Setup event handlers
-      this.setupEventHandlers(layerId, config)
-      this.setupClusterClickHandler(`${layerId}-clusters`, config)
+        // Setup event handlers for fill and line layers
+        this.setupPolygonEventHandlers(`${layerId}-fill`, config)
+        this.setupPolygonEventHandlers(`${layerId}-line`, config)
+      }
     }
   }
 
@@ -348,6 +407,86 @@ export class MapboxLayerManager {
     }
     this.map.on('click', layerId, clusterClickHandler)
     handlers.push({ type: 'click', layerId, handler: clusterClickHandler })
+
+    // Store handlers for cleanup
+    const existingHandlers = this.eventHandlers.get(config.id) || []
+    this.eventHandlers.set(config.id, [...existingHandlers, ...handlers])
+  }
+
+  /**
+   * Setup hover and click handlers for polygon/line layers
+   * Uses click location for popup position instead of geometry center
+   */
+  private setupPolygonEventHandlers(layerId: string, config: NgsiLayerConfig): void {
+    let hoverPopup: mapboxgl.Popup | null = null
+    const handlers: { type: string; layerId: string; handler: (e: mapboxgl.MapLayerMouseEvent) => void }[] = []
+
+    // Cursor change and hover popup on mouseenter
+    const mouseenterHandler = (e: mapboxgl.MapLayerMouseEvent) => {
+      this.map.getCanvas().style.cursor = 'pointer'
+
+      if (!e.features || e.features.length === 0) return
+
+      const feature = e.features[0]
+      
+      // Use mouse position for hover popup
+      const coordinates: [number, number] = [e.lngLat.lng, e.lngLat.lat]
+
+      // Create hover popup
+      const content = this.renderHoverPopupContent(config, feature.properties)
+      hoverPopup = new mapboxgl.Popup({
+        closeButton: false,
+        closeOnClick: false,
+        className: 'ngsi-hover-popup',
+        offset: 15,
+      })
+        .setLngLat(coordinates)
+        .setHTML(content)
+        .addTo(this.map)
+    }
+    this.map.on('mouseenter', layerId, mouseenterHandler)
+    handlers.push({ type: 'mouseenter', layerId, handler: mouseenterHandler })
+
+    // Update popup position on mousemove for polygons
+    const mousemoveHandler = (e: mapboxgl.MapLayerMouseEvent) => {
+      if (hoverPopup) {
+        hoverPopup.setLngLat([e.lngLat.lng, e.lngLat.lat])
+      }
+    }
+    this.map.on('mousemove', layerId, mousemoveHandler)
+    handlers.push({ type: 'mousemove', layerId, handler: mousemoveHandler })
+
+    // Remove hover popup on mouseleave
+    const mouseleaveHandler = () => {
+      this.map.getCanvas().style.cursor = ''
+      if (hoverPopup) {
+        hoverPopup.remove()
+        hoverPopup = null
+      }
+    }
+    this.map.on('mouseleave', layerId, mouseleaveHandler)
+    handlers.push({ type: 'mouseleave', layerId, handler: mouseleaveHandler as (e: mapboxgl.MapLayerMouseEvent) => void })
+
+    // Click handler for detailed popup - use click location or geometry center
+    const clickHandler = (e: mapboxgl.MapLayerMouseEvent) => {
+      if (!e.features || e.features.length === 0) return
+
+      // Remove hover popup
+      if (hoverPopup) {
+        hoverPopup.remove()
+        hoverPopup = null
+      }
+
+      const feature = e.features[0]
+      
+      // For polygons/lines, use the click location for popup
+      const coordinates: [number, number] = [e.lngLat.lng, e.lngLat.lat]
+
+      // Show detailed popup
+      this.showPopup(config, feature.properties, coordinates)
+    }
+    this.map.on('click', layerId, clickHandler)
+    handlers.push({ type: 'click', layerId, handler: clickHandler })
 
     // Store handlers for cleanup
     const existingHandlers = this.eventHandlers.get(config.id) || []
@@ -582,7 +721,7 @@ export class MapboxLayerManager {
     if (handlers) {
       for (const { type, layerId: handlerLayerId, handler } of handlers) {
         try {
-          this.map.off(type as 'click' | 'mouseenter' | 'mouseleave', handlerLayerId, handler)
+          this.map.off(type as 'click' | 'mouseenter' | 'mouseleave' | 'mousemove', handlerLayerId, handler)
         } catch {
           // Layer might already be removed
         }

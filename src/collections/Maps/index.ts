@@ -124,7 +124,7 @@ export const Maps: CollectionConfig<'maps'> = {
                       type: 'text',
                       defaultValue: '#3b82f6',
                       admin: {
-                        description: 'Marker color in hex format',
+                        description: 'Main color in hex format (used for points, polygon fill, and line stroke)',
                       },
                     },
                     {
@@ -134,7 +134,7 @@ export const Maps: CollectionConfig<'maps'> = {
                       min: 4,
                       max: 48,
                       admin: {
-                        description: 'Marker size in pixels',
+                        description: 'Point marker size in pixels',
                       },
                     },
                     {
@@ -149,7 +149,36 @@ export const Maps: CollectionConfig<'maps'> = {
                         { label: 'Pin', value: 'pin' },
                       ],
                       admin: {
-                        description: 'Marker icon shape',
+                        description: 'Point marker icon shape',
+                      },
+                    },
+                    {
+                      name: 'fillOpacity',
+                      type: 'number',
+                      defaultValue: 0.3,
+                      min: 0,
+                      max: 1,
+                      admin: {
+                        description: 'Polygon fill opacity (0-1). Only applies to Polygon geometries.',
+                        step: 0.1,
+                      },
+                    },
+                    {
+                      name: 'strokeWidth',
+                      type: 'number',
+                      defaultValue: 2,
+                      min: 1,
+                      max: 10,
+                      admin: {
+                        description: 'Line/polygon outline width in pixels',
+                      },
+                    },
+                    {
+                      name: 'strokeColor',
+                      type: 'text',
+                      admin: {
+                        description: 'Stroke color in hex format. Leave empty to use main color.',
+                        placeholder: 'Same as main color',
                       },
                     },
                   ],

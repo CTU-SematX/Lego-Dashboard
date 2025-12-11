@@ -48,12 +48,15 @@ export const discoverEntitiesEndpoint: PayloadHandler = async (req) => {
     const services = source.serviceHeader?.map((s) => s.value || '') || ['']
     const servicePaths = source.servicePath?.map((s) => s.value || '/') || ['/']
 
+    console.log('[DEBUG] Discover entities - services:', services, 'servicePaths:', servicePaths)
+
     const discoveredEntities: DiscoveredEntity[] = []
     const tenants: TenantInfo[] = []
 
     // Iterate through all service/servicePath combinations
     for (const service of services) {
       for (const servicePath of servicePaths) {
+        console.log('[DEBUG] Processing tenant - service:', service, 'servicePath:', servicePath)
         const tenantInfo: TenantInfo = {
           service: service || '',
           servicePath: servicePath || '/',
@@ -65,7 +68,8 @@ export const discoverEntitiesEndpoint: PayloadHandler = async (req) => {
           const client = createNgsiClient({
             brokerUrl: source.brokerUrl,
             service: service || undefined,
-            servicePath: servicePath || '/',
+            // Only set servicePath if service is also set (avoid tenant isolation)
+            servicePath: service ? (servicePath || '/') : undefined,
           })
 
           // Fetch all entities from broker
@@ -222,8 +226,12 @@ export const importEntitiesEndpoint: PayloadHandler = async (req) => {
           dataModelId = dataModel.docs[0].id
         }
 
-        // Extract short ID from URN (last part after the last colon)
-        const shortId = entity.entityId.split(':').pop() || entity.entityId
+        // Extract short ID from URN - everything after 'urn:ngsi-ld:Type:'
+        // For 'urn:ngsi-ld:WeatherAlert:HCMC:fire-005' -> 'HCMC:fire-005'
+        const urnPrefix = `urn:ngsi-ld:${simpleType}:`
+        const shortId = entity.entityId.startsWith(urnPrefix)
+          ? entity.entityId.substring(urnPrefix.length)
+          : entity.entityId.split(':').pop() || entity.entityId
 
         // Check if entity already exists
         const existing = await req.payload.find({

@@ -146,7 +146,11 @@ export const NgsiEntities: CollectionConfig = {
               },
               hooks: {
                 beforeChange: [
-                  async ({ data, req }) => {
+                  async ({ data, req, context }) => {
+                    // Skip regeneration if importing from broker (preserve original entityId)
+                    if (context?.skipSync && data?.entityId) {
+                      return data.entityId
+                    }
                     if (data?.shortId && data?.dataModel) {
                       const modelDoc = await req.payload.findByID({
                         collection: 'ngsi-data-models',

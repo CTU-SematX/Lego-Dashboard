@@ -65,7 +65,9 @@ export function createNgsiClient(config: NgsiClientConfig): AxiosInstance {
   }
 
   // Fiware-ServicePath for hierarchical scopes (e.g., /city/sensors)
-  if (servicePath && servicePath.trim()) {
+  // Only add if service is also set (servicePath without service has no meaning)
+  // Skip if servicePath is just '/' (default/root path)
+  if (service && servicePath && servicePath.trim() && servicePath.trim() !== '/') {
     headers['Fiware-ServicePath'] = servicePath.trim()
   }
 

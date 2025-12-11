@@ -10,7 +10,10 @@ import {
 
 export interface UseNgsiDataOptions {
   brokerUrl: string
+  sourceId?: string // Source ID for server-side API fetching (recommended for HTTPS sites)
+  proxyUrl?: string // Deprecated: Optional HTTPS proxy URL to avoid mixed content errors
   entityId?: string // Single entity mode
+  entityIds?: string[] // Multiple specific entity IDs to filter
   entityType?: string // Query mode (multiple entities)
   tenant?: string
   servicePath?: string
@@ -52,7 +55,10 @@ export function useNgsiData<T = NgsiEntity | NgsiEntity[]>(
 ): UseNgsiDataResult<T> {
   const {
     brokerUrl,
+    sourceId,
+    proxyUrl,
     entityId,
+    entityIds,
     entityType,
     tenant,
     servicePath,
@@ -74,6 +80,8 @@ export function useNgsiData<T = NgsiEntity | NgsiEntity[]>(
   // Create client config (stable reference for comparison)
   const clientConfig: NgsiBrowserClientConfig = {
     brokerUrl,
+    sourceId,
+    proxyUrl,
     tenant,
     servicePath,
     contextUrl,
@@ -101,8 +109,8 @@ export function useNgsiData<T = NgsiEntity | NgsiEntity[]>(
         // Single entity mode
         result = (await client.getEntity(entityId, { attrs })) as T
       } else if (entityType) {
-        // Query mode
-        result = (await client.queryEntities({ type: entityType, attrs })) as T
+        // Query mode - pass entityIds for filtering if provided
+        result = (await client.queryEntities({ type: entityType, ids: entityIds, attrs })) as T
       } else {
         throw new NgsiError('Either entityId or entityType is required', 400)
       }
@@ -127,7 +135,7 @@ export function useNgsiData<T = NgsiEntity | NgsiEntity[]>(
         setIsLoading(false)
       }
     }
-  }, [brokerUrl, entityId, entityType, tenant, servicePath, contextUrl, attrs?.join(','), enabled])
+  }, [brokerUrl, sourceId, proxyUrl, entityId, entityIds?.join(','), entityType, tenant, servicePath, contextUrl, attrs?.join(','), enabled])
 
   // Initial fetch and dependency change
   useEffect(() => {

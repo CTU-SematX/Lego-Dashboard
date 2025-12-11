@@ -34,7 +34,8 @@ export function NgsiCardBlock({ dataSource, cardContent, className }: NgsiCardBl
   const dataModel = entity && typeof entity.dataModel === 'object' ? entity.dataModel : null
 
   // Build configuration from entity - broker/tenant comes from entity
-  const brokerUrl = source?.proxyUrl || source?.brokerUrl || ''
+  const brokerUrl = source?.brokerUrl || ''
+  const sourceId = source?.id || undefined
   const entityId = entity?.entityId || ''
   const contextUrl = dataModel?.contextUrl
   const tenant = entity?.service || undefined
@@ -43,6 +44,7 @@ export function NgsiCardBlock({ dataSource, cardContent, className }: NgsiCardBl
   // Fetch entity data from broker
   const { data, isLoading, error, refetch, lastUpdated } = useNgsiData<NgsiEntityData>({
     brokerUrl,
+    sourceId,
     entityId,
     tenant,
     servicePath,

@@ -64,16 +64,9 @@ const PageClient: React.FC<MapPageClientProps> = ({ map, allMaps }) => {
           })
           .filter((entity): entity is any => entity !== null)
 
-        // Get broker URL (use direct broker URL)
+        // Get broker URL and source ID for server-side API
         const brokerUrl = source?.brokerUrl || ''
-
-        // DEBUG: Log broker URL
-        console.log('[DEBUG] Layer:', layer.name, {
-          sourceName: source?.name,
-          brokerUrl: source?.brokerUrl,
-          proxyUrl: source?.proxyUrl,
-          usingBrokerUrl: brokerUrl,
-        })
+        const sourceId = source?.id || undefined
 
         // Get entity type from data model
         const entityType = dataModel?.model || ''
@@ -103,6 +96,7 @@ const PageClient: React.FC<MapPageClientProps> = ({ map, allMaps }) => {
           id: layer.id || `layer-${Math.random().toString(36).substr(2, 9)}`,
           name: layer.name,
           brokerUrl,
+          sourceId,
           entityType,
           entityIds: entityIds && entityIds.length > 0 ? entityIds : undefined,
           // Always fetch from broker, don't use preloaded entity data

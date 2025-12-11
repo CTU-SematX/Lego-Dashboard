@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useCallback, useState } from 'react'
+import { useEffect, useRef, useCallback, useState, useMemo } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { MapboxLayerManager, type NgsiLayerConfig } from './MapboxLayerManager'
@@ -15,6 +15,8 @@ export interface MapLayerData {
   id: string
   name: string
   brokerUrl: string
+  sourceId?: string // Source ID for server-side API fetching (recommended for HTTPS sites)
+  proxyUrl?: string // Deprecated: Optional HTTPS proxy URL to avoid mixed content errors
   entityType: string
   entityIds?: string[]
   entityData?: NgsiEntity[] // Preloaded entity data from PayloadCMS
@@ -57,19 +59,37 @@ const NgsiLayerFetcher: React.FC<{
   onDataLoaded: (layerId: string, data: NgsiEntity[]) => void
   onError: (layerId: string, error: string) => void
 }> = ({ layer, onDataLoaded, onError }) => {
-  // If entityData is provided (preloaded from PayloadCMS), use it directly
+  // Track last processed data to prevent duplicate calls
+  const lastDataHashRef = useRef<string>('')
+  const onDataLoadedRef = useRef(onDataLoaded)
+  const onErrorRef = useRef(onError)
+
+  // Keep refs updated
   useEffect(() => {
-    if (layer.entityData && layer.entityData.length > 0) {
-      onDataLoaded(layer.id, layer.entityData)
-    }
-  }, [layer.entityData, layer.id, onDataLoaded])
+    onDataLoadedRef.current = onDataLoaded
+    onErrorRef.current = onError
+  }, [onDataLoaded, onError])
 
   // Only fetch from broker if no preloaded data
   const shouldFetch = !layer.entityData || layer.entityData.length === 0
 
+  // If entityData is provided (preloaded from PayloadCMS), use it directly
+  useEffect(() => {
+    if (layer.entityData && layer.entityData.length > 0) {
+      const dataHash = `preloaded-${layer.id}-${layer.entityData.length}`
+      if (lastDataHashRef.current !== dataHash) {
+        lastDataHashRef.current = dataHash
+        onDataLoadedRef.current(layer.id, layer.entityData)
+      }
+    }
+  }, [layer.entityData, layer.id])
+
   const { data, error } = useNgsiData<NgsiEntity[]>({
     brokerUrl: layer.brokerUrl,
+    sourceId: layer.sourceId,
+    proxyUrl: layer.proxyUrl,
     entityType: layer.entityType,
+    entityIds: layer.entityIds,
     tenant: layer.tenant,
     servicePath: layer.servicePath,
     contextUrl: layer.contextUrl,
@@ -79,15 +99,19 @@ const NgsiLayerFetcher: React.FC<{
 
   useEffect(() => {
     if (data && shouldFetch) {
-      onDataLoaded(layer.id, data)
+      const dataHash = `fetched-${layer.id}-${data.length}-${JSON.stringify(data.map(e => e.id))}`
+      if (lastDataHashRef.current !== dataHash) {
+        lastDataHashRef.current = dataHash
+        onDataLoadedRef.current(layer.id, data)
+      }
     }
-  }, [data, layer.id, onDataLoaded, shouldFetch])
+  }, [data, layer.id, shouldFetch])
 
   useEffect(() => {
     if (error && shouldFetch) {
-      onError(layer.id, error.message)
+      onErrorRef.current(layer.id, error.message)
     }
-  }, [error, layer.id, onError, shouldFetch])
+  }, [error, layer.id, shouldFetch])
 
   return null
 }
@@ -105,6 +129,15 @@ export const MapView: React.FC<MapViewProps> = ({
   const [mapLoaded, setMapLoaded] = useState(false)
   const [layerErrors, setLayerErrors] = useState<Record<string, string>>({})
   const layerDataRef = useRef<Record<string, { name: string; count: number; color?: string }>>({})
+
+  // Store stable refs to avoid callback dependency issues
+  const layersRef = useRef(layers)
+  const onLayerDataLoadedRef = useRef(onLayerDataLoaded)
+
+  useEffect(() => {
+    layersRef.current = layers
+    onLayerDataLoadedRef.current = onLayerDataLoaded
+  }, [layers, onLayerDataLoaded])
 
   // Initialize map
   useEffect(() => {
@@ -152,13 +185,18 @@ export const MapView: React.FC<MapViewProps> = ({
     }
   }, [mapSettings?.mapStyle, mapSettings?.centerLng, mapSettings?.centerLat, mapSettings?.zoom])
 
-  // Handle layer data loaded
+  // Handle layer data loaded - use refs for stable callback
   const handleDataLoaded = useCallback(
     (layerId: string, entities: NgsiEntity[]) => {
-      if (!layerManager.current || !mapLoaded) return
+      if (!layerManager.current || !mapLoaded) {
+        return
+      }
 
-      const layer = layers?.find((l) => l.id === layerId)
-      if (!layer) return
+      const currentLayers = layersRef.current
+      const layer = currentLayers?.find((l) => l.id === layerId)
+      if (!layer) {
+        return
+      }
 
       // Handle empty string as undefined for auto-detection
       const locationAttr =
@@ -188,8 +226,8 @@ export const MapView: React.FC<MapViewProps> = ({
         count: entities.length,
         color: layer.markerStyle?.color || undefined,
       }
-      if (onLayerDataLoaded) {
-        onLayerDataLoaded({ ...layerDataRef.current })
+      if (onLayerDataLoadedRef.current) {
+        onLayerDataLoadedRef.current({ ...layerDataRef.current })
       }
 
       // Clear error for this layer
@@ -199,7 +237,7 @@ export const MapView: React.FC<MapViewProps> = ({
         return next
       })
     },
-    [mapLoaded, layers, onLayerDataLoaded],
+    [mapLoaded], // Only depend on mapLoaded since we use refs for layers and onLayerDataLoaded
   )
 
   // Handle layer error
@@ -207,19 +245,30 @@ export const MapView: React.FC<MapViewProps> = ({
     setLayerErrors((prev) => ({ ...prev, [layerId]: error }))
   }, [])
 
-  // Clean up removed layers
+  // Clean up removed layers and their counts
   useEffect(() => {
     if (!layerManager.current || !mapLoaded) return
 
     const currentLayerIds = layers?.map((l) => l.id) || []
     const existingLayerIds = layerManager.current.getLayerIds()
 
+    let layerCountsChanged = false
     for (const existingId of existingLayerIds) {
       if (!currentLayerIds.includes(existingId)) {
         layerManager.current.removeLayer(existingId)
+        // Also clean up layer counts
+        if (layerDataRef.current[existingId]) {
+          delete layerDataRef.current[existingId]
+          layerCountsChanged = true
+        }
       }
     }
-  }, [layers, mapLoaded])
+
+    // Notify parent if layer counts changed
+    if (layerCountsChanged && onLayerDataLoaded) {
+      onLayerDataLoaded({ ...layerDataRef.current })
+    }
+  }, [layers, mapLoaded, onLayerDataLoaded])
 
   const enabledLayers = layers?.filter((l) => l.enabled !== false) || []
   const hasErrors = Object.keys(layerErrors).length > 0

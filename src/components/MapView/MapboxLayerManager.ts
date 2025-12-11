@@ -38,11 +38,20 @@ const ICON_SVGS: Record<string, string> = {
 export class MapboxLayerManager {
   private map: mapboxgl.Map
   private layers: Map<string, NgsiLayerConfig> = new Map()
+  private layerStyleHashes: Map<string, string> = new Map() // Track layer style hash for change detection
   private popups: Map<string, mapboxgl.Popup> = new Map()
   private loadedIcons: Set<string> = new Set()
+  private eventHandlers: Map<string, { type: string; layerId: string; handler: (e: mapboxgl.MapLayerMouseEvent) => void }[]> = new Map()
 
   constructor(map: mapboxgl.Map) {
     this.map = map
+  }
+
+  /**
+   * Generate a hash for layer style to detect changes
+   */
+  private getStyleHash(config: NgsiLayerConfig): string {
+    return `${config.style.icon || 'circle'}-${config.style.color || '#3b82f6'}-${config.style.size || 8}`
   }
 
   /**
@@ -51,16 +60,28 @@ export class MapboxLayerManager {
   addOrUpdateLayer(config: NgsiLayerConfig): void {
     const sourceId = `ngsi-source-${config.id}`
     const layerId = `ngsi-layer-${config.id}`
-
-    // Store config for later reference
-    this.layers.set(config.id, config)
+    const newStyleHash = this.getStyleHash(config)
+    const existingStyleHash = this.layerStyleHashes.get(config.id)
 
     // Check if source already exists
     const existingSource = this.map.getSource(sourceId) as mapboxgl.GeoJSONSource | undefined
 
-    if (existingSource) {
+    // If style has changed (icon type, color, or size), we need to recreate the layer
+    if (existingSource && existingStyleHash !== newStyleHash) {
+      // Remove old layer completely and recreate with new style
+      this.removeLayer(config.id)
+    }
+
+    // Store config for later reference
+    this.layers.set(config.id, config)
+    this.layerStyleHashes.set(config.id, newStyleHash)
+
+    // Check if source exists after potential removal
+    const currentSource = this.map.getSource(sourceId) as mapboxgl.GeoJSONSource | undefined
+
+    if (currentSource) {
       // Update existing source data
-      existingSource.setData(config.data as GeoJSON.FeatureCollection)
+      currentSource.setData(config.data as GeoJSON.FeatureCollection)
     } else {
       // Add new source
       this.map.addSource(sourceId, {
@@ -210,9 +231,10 @@ export class MapboxLayerManager {
    */
   private setupEventHandlers(layerId: string, config: NgsiLayerConfig): void {
     let hoverPopup: mapboxgl.Popup | null = null
+    const handlers: { type: string; layerId: string; handler: (e: mapboxgl.MapLayerMouseEvent) => void }[] = []
 
     // Cursor change and hover popup on mouseenter
-    this.map.on('mouseenter', layerId, (e) => {
+    const mouseenterHandler = (e: mapboxgl.MapLayerMouseEvent) => {
       this.map.getCanvas().style.cursor = 'pointer'
 
       if (!e.features || e.features.length === 0) return
@@ -239,19 +261,23 @@ export class MapboxLayerManager {
         .setLngLat(coordinates)
         .setHTML(content)
         .addTo(this.map)
-    })
+    }
+    this.map.on('mouseenter', layerId, mouseenterHandler)
+    handlers.push({ type: 'mouseenter', layerId, handler: mouseenterHandler })
 
     // Remove hover popup on mouseleave
-    this.map.on('mouseleave', layerId, () => {
+    const mouseleaveHandler = () => {
       this.map.getCanvas().style.cursor = ''
       if (hoverPopup) {
         hoverPopup.remove()
         hoverPopup = null
       }
-    })
+    }
+    this.map.on('mouseleave', layerId, mouseleaveHandler)
+    handlers.push({ type: 'mouseleave', layerId, handler: mouseleaveHandler as (e: mapboxgl.MapLayerMouseEvent) => void })
 
     // Click handler for detailed popup
-    this.map.on('click', layerId, (e) => {
+    const clickHandler = (e: mapboxgl.MapLayerMouseEvent) => {
       if (!e.features || e.features.length === 0) return
 
       // Remove hover popup
@@ -273,22 +299,34 @@ export class MapboxLayerManager {
 
       // Show detailed popup
       this.showPopup(config, feature.properties, coordinates)
-    })
+    }
+    this.map.on('click', layerId, clickHandler)
+    handlers.push({ type: 'click', layerId, handler: clickHandler })
+
+    // Store handlers for cleanup
+    const existingHandlers = this.eventHandlers.get(config.id) || []
+    this.eventHandlers.set(config.id, [...existingHandlers, ...handlers])
   }
 
   /**
    * Setup click handler for cluster zoom
    */
   private setupClusterClickHandler(layerId: string, config: NgsiLayerConfig): void {
-    this.map.on('mouseenter', layerId, () => {
+    const handlers: { type: string; layerId: string; handler: (e: mapboxgl.MapLayerMouseEvent) => void }[] = []
+
+    const clusterMouseenterHandler = () => {
       this.map.getCanvas().style.cursor = 'pointer'
-    })
+    }
+    this.map.on('mouseenter', layerId, clusterMouseenterHandler)
+    handlers.push({ type: 'mouseenter', layerId, handler: clusterMouseenterHandler as (e: mapboxgl.MapLayerMouseEvent) => void })
 
-    this.map.on('mouseleave', layerId, () => {
+    const clusterMouseleaveHandler = () => {
       this.map.getCanvas().style.cursor = ''
-    })
+    }
+    this.map.on('mouseleave', layerId, clusterMouseleaveHandler)
+    handlers.push({ type: 'mouseleave', layerId, handler: clusterMouseleaveHandler as (e: mapboxgl.MapLayerMouseEvent) => void })
 
-    this.map.on('click', layerId, (e) => {
+    const clusterClickHandler = (e: mapboxgl.MapLayerMouseEvent) => {
       if (!e.features || e.features.length === 0) return
 
       const feature = e.features[0]
@@ -307,7 +345,13 @@ export class MapboxLayerManager {
           zoom: zoom ?? 14,
         })
       })
-    })
+    }
+    this.map.on('click', layerId, clusterClickHandler)
+    handlers.push({ type: 'click', layerId, handler: clusterClickHandler })
+
+    // Store handlers for cleanup
+    const existingHandlers = this.eventHandlers.get(config.id) || []
+    this.eventHandlers.set(config.id, [...existingHandlers, ...handlers])
   }
 
   /**
@@ -533,6 +577,19 @@ export class MapboxLayerManager {
       `ngsi-symbol-${layerId}`,
     ]
 
+    // Remove event handlers first
+    const handlers = this.eventHandlers.get(layerId)
+    if (handlers) {
+      for (const { type, layerId: handlerLayerId, handler } of handlers) {
+        try {
+          this.map.off(type as 'click' | 'mouseenter' | 'mouseleave', handlerLayerId, handler)
+        } catch {
+          // Layer might already be removed
+        }
+      }
+      this.eventHandlers.delete(layerId)
+    }
+
     // Remove layers
     for (const layer of layers) {
       if (this.map.getLayer(layer)) {
@@ -553,6 +610,7 @@ export class MapboxLayerManager {
     }
 
     this.layers.delete(layerId)
+    this.layerStyleHashes.delete(layerId)
   }
 
   /**

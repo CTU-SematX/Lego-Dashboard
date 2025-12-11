@@ -15,6 +15,8 @@ import { NGSI_LD_CORE_CONTEXT, buildLinkHeader } from './client'
 
 export interface NgsiBrowserClientConfig {
   brokerUrl: string
+  sourceId?: string // Source ID for server-side API fetching (recommended for HTTPS sites)
+  proxyUrl?: string // Deprecated: Optional HTTPS proxy URL to avoid mixed content errors
   tenant?: string
   servicePath?: string
   contextUrl?: string
@@ -28,6 +30,7 @@ export interface NgsiEntity {
 
 export interface QueryEntitiesOptions {
   type?: string
+  ids?: string[] // Specific entity IDs to filter
   q?: string // NGSI-LD query string
   attrs?: string[] // Attributes to return
   limit?: number
@@ -106,22 +109,65 @@ export class NgsiBrowserClient {
   }
 
   /**
+   * Build URL - uses server API if sourceId is set, proxy if proxyUrl set, otherwise direct broker URL
+   */
+  private buildUrl(path: string, params?: URLSearchParams): string {
+    if (this.config.proxyUrl) {
+      // Use proxy endpoint (legacy approach)
+      const proxyUrl = new URL(this.config.proxyUrl)
+      proxyUrl.searchParams.set('broker', this.config.brokerUrl)
+      proxyUrl.searchParams.set('path', path)
+      if (params && params.toString()) {
+        proxyUrl.searchParams.set('params', params.toString())
+      }
+      return proxyUrl.toString()
+    } else {
+      // Direct broker access
+      const url = new URL(path, this.config.brokerUrl)
+      if (params) {
+        params.forEach((value, key) => url.searchParams.set(key, value))
+      }
+      return url.toString()
+    }
+  }
+
+  /**
+   * Build server API URL for entity queries (bypasses mixed content issues)
+   */
+  private buildApiUrl(entityType: string, entityIds?: string[]): string {
+    const apiUrl = new URL('/api/ngsi/entities', window.location.origin)
+    apiUrl.searchParams.set('sourceId', this.config.sourceId!)
+    apiUrl.searchParams.set('type', entityType)
+    if (entityIds && entityIds.length > 0) {
+      apiUrl.searchParams.set('ids', entityIds.join(','))
+    }
+    if (this.config.tenant) {
+      apiUrl.searchParams.set('tenant', this.config.tenant)
+    }
+    if (this.config.servicePath) {
+      apiUrl.searchParams.set('servicePath', this.config.servicePath)
+    }
+    if (this.config.contextUrl) {
+      apiUrl.searchParams.set('contextUrl', this.config.contextUrl)
+    }
+    return apiUrl.toString()
+  }
+
+  /**
    * GET single entity by ID
    *
    * @param entityId - Full entity URN (e.g., "urn:ngsi-ld:WeatherObserved:006")
    * @param options - Optional: attrs to filter attributes
    */
   async getEntity(entityId: string, options?: { attrs?: string[] }): Promise<NgsiEntity> {
-    const url = new URL(
-      `/ngsi-ld/v1/entities/${encodeURIComponent(entityId)}`,
-      this.config.brokerUrl,
-    )
-
+    const params = new URLSearchParams()
     if (options?.attrs?.length) {
-      url.searchParams.set('attrs', options.attrs.join(','))
+      params.set('attrs', options.attrs.join(','))
     }
 
-    const response = await fetch(url.toString(), {
+    const url = this.buildUrl(`/ngsi-ld/v1/entities/${encodeURIComponent(entityId)}`, params)
+
+    const response = await fetch(url, {
       method: 'GET',
       headers: this.buildHeaders(),
     })
@@ -135,25 +181,38 @@ export class NgsiBrowserClient {
    * @param options - Query parameters
    */
   async queryEntities(options?: QueryEntitiesOptions): Promise<NgsiEntity[]> {
-    const url = new URL('/ngsi-ld/v1/entities', this.config.brokerUrl)
+    // Use server-side API if sourceId is provided (recommended for HTTPS sites)
+    if (this.config.sourceId && options?.type) {
+      const url = this.buildApiUrl(options.type, options.ids)
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+      })
+      return this.handleResponse<NgsiEntity[]>(response)
+    }
+
+    // Fall back to direct/proxy access
+    const params = new URLSearchParams()
 
     if (options?.type) {
-      url.searchParams.set('type', options.type)
+      params.set('type', options.type)
     }
     if (options?.q) {
-      url.searchParams.set('q', options.q)
+      params.set('q', options.q)
     }
     if (options?.attrs?.length) {
-      url.searchParams.set('attrs', options.attrs.join(','))
+      params.set('attrs', options.attrs.join(','))
     }
     if (options?.limit) {
-      url.searchParams.set('limit', String(options.limit))
+      params.set('limit', String(options.limit))
     }
     if (options?.offset) {
-      url.searchParams.set('offset', String(options.offset))
+      params.set('offset', String(options.offset))
     }
 
-    const response = await fetch(url.toString(), {
+    const url = this.buildUrl('/ngsi-ld/v1/entities', params)
+
+    const response = await fetch(url, {
       method: 'GET',
       headers: this.buildHeaders(),
     })
